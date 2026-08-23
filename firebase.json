@@ -1,0 +1,38 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "firestore.rules",
+      "firestore.indexes.json",
+      "storage.rules",
+      "**/.*",
+      "**/node_modules/**",
+      "**/*.md",
+      "admin-approval-example.js"
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(js|css|html|json)",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+        ]
+      },
+      {
+        "source": "/sw.js",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache" }
+        ]
+      }
+    ],
+    "cleanUrls": true,
+    "trailingSlash": false
+  }
+}

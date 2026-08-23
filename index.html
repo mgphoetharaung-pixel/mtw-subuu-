@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+    <title>MTW SUBUU Pro Max</title>
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#ff9f0a" id="meta-theme-color">
+    
+    <link rel="icon" type="image/png" href="https://img.icons8.com/fluent/512/piggy-bank.png">
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluent/512/piggy-bank.png">
+    <link rel="shortcut icon" href="https://img.icons8.com/fluent/512/piggy-bank.png">
+    <link rel="manifest" href="manifest.json">
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="loading-screen">
+        <i class="fa-solid fa-piggy-bank"></i>
+        <h2>MTW SUBUU</h2>
+    </div>
+
+    <div id="pin-screen" style="display: none;">
+        <div class="form-container pin-container glass-panel">
+            <i class="fa-solid fa-lock"></i>
+            <h3 id="pin-title" style="margin-bottom: 25px; font-weight: 600;">Enter PIN</h3>
+            <div id="pin-dots">
+                <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+            </div>
+            <div class="pin-pad">
+                <button onclick="pinDigit(1)">1</button><button onclick="pinDigit(2)">2</button><button onclick="pinDigit(3)">3</button>
+                <button onclick="pinDigit(4)">4</button><button onclick="pinDigit(5)">5</button><button onclick="pinDigit(6)">6</button>
+                <button onclick="pinDigit(7)">7</button><button onclick="pinDigit(8)">8</button><button onclick="pinDigit(9)">9</button>
+                <button class="btn-clear bio-btn" onclick="unlockWithBiometrics()"><i class="fa-solid fa-fingerprint"></i></button>
+                <button onclick="pinDigit(0)">0</button>
+                <button onclick="pinClear()" class="btn-clear"><i class="fa-solid fa-delete-left"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="auth-screen" style="display: none;">
+        <div class="form-container auth-container glass-panel">
+            <div class="auth-header">
+                <i class="fa-solid fa-piggy-bank" style="color: var(--primary-color);"></i>
+                <h3 id="auth-title">Login</h3>
+            </div>
+            <div class="input-group glass-panel">
+                <i class="fa-solid fa-envelope input-icon"></i>
+                <input type="email" id="email-input" placeholder="Email Address">
+            </div>
+            <div class="input-group glass-panel">
+                <i class="fa-solid fa-lock input-icon"></i>
+                <input type="password" id="password-input" placeholder="Password">
+            </div>
+            <div class="auth-toggle">
+                <a href="#" id="forgot-pwd-text" onclick="forgotPassword()">Forgot Password?</a>
+                <a href="#" id="auth-toggle-text" onclick="toggleAuthMode()">Create Account</a>
+            </div>
+            <button id="auth-btn" onclick="handleAuth()"><i class="fa-solid fa-right-to-bracket"></i> <span id="lbl-login-btn">Login</span></button>
+            <div class="auth-divider" id="lbl-auth-or">OR</div>
+            <button onclick="signInWithGoogle()" class="btn-google"><i class="fa-brands fa-google"></i> <span id="lbl-google-login">Google Login</span></button>
+        </div>
+    </div>
+
+    <div id="main-app" style="display: none; flex-direction: column; height: 100%;">
+        <div class="top-bar glass-panel">
+            <div class="brand"><i class="fa-solid fa-piggy-bank" style="color:var(--primary-color);"></i> MTW SUBUU</div>
+            <div class="top-actions">
+                <div class="notif-icon-wrapper ai-top-btn" onclick="handleAIAssistantTap()" title="SUBUU AI">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span class="ai-pro-dot"></span>
+                </div>
+                <div class="notif-icon-wrapper" onclick="openNotifications()">
+                    <i class="fa-solid fa-bell"></i>
+                    <span id="notif-badge" style="display:none;">0</span>
+                </div>
+                <div id="top-profile-wrapper" onclick="openProfileModal()">
+                    <img id="top-bar-profile-img" src="https://img.icons8.com/color/512/user-male-circle--v1.png" referrerpolicy="no-referrer">
+                </div>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div id="tab-home" class="tab-content active">
+                <div class="summary-card text-center glass-panel" style="margin-top: 20px;">
+                    <i class="fa-solid fa-wallet" style="font-size: 50px; color: var(--primary-color); margin-bottom: 15px;"></i>
+                    <h3 id="welcome-text">Welcome Back!</h3>
+                    <p id="welcome-sub" style="color: var(--secondary-text); font-size: 14px; margin-top: 10px;">
+                        Tap the "+" button below to track your finances.
+                    </p>
+                </div>
+                <div id="ai-smart-cards"></div>
+                <div id="quick-recent-list" style="margin-top: 20px;"></div>
+            </div>
+
+            <div id="tab-report" class="tab-content">
+                <div class="type-toggle-container report-toggle glass-panel" style="position: relative; z-index: 99; margin-bottom: 20px;">
+                    <div id="view-monthly" class="type-btn active" onclick="setReportView('Monthly')">Monthly</div>
+                    <div id="view-yearly" class="type-btn" onclick="checkProAndSetView('Yearly')" style="display: flex; justify-content: center; align-items: center;">
+                        <span id="lbl-yearly">Yearly</span> <span class="pro-badge">PRO</span>
+                    </div>
+                </div>
+
+                <div class="glass-panel" id="month-picker-wrapper" style="width: 100%; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; cursor: pointer;" onclick="openMonthPicker()">
+                    <div style="display: flex; align-items: center; gap: 10px; pointer-events: none;">
+                        <i class="fa-regular fa-calendar-days" style="color: var(--primary-color); font-size: 18px;"></i>
+                        <span id="display-report-month" style="font-weight: 800; font-size: 16px; color: var(--text-color);">Loading...</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-down" style="color: var(--secondary-text); font-size: 14px; pointer-events: none;"></i>
+                    <input type="hidden" id="report-month">
+                </div>
+                
+                <div class="glass-panel" id="yearly-picker-wrapper" style="width: 100%; padding: 15px 20px; display: none; justify-content: space-between; align-items: center; margin-bottom: 20px; cursor: pointer;" onclick="openMonthPicker()">
+                    <div style="display: flex; align-items: center; gap: 10px; pointer-events: none;">
+                        <i class="fa-regular fa-calendar-days" style="color: var(--primary-color); font-size: 18px;"></i>
+                        <span id="display-report-year" style="font-weight: 800; font-size: 16px; color: var(--text-color);">Loading...</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-down" style="color: var(--secondary-text); font-size: 14px; pointer-events: none;"></i>
+                    <input type="hidden" id="report-year">
+                </div>
+                
+                <div class="stats-container">
+                    <div class="stats-box balance-box glass-panel"><div class="summary-title" id="lbl-balance">Balance</div><div class="summary-amount text-blue" id="rep-balance">0</div></div>
+                    <div class="stats-box income-box glass-panel"><div class="summary-title" id="lbl-income">Income</div><div class="summary-amount text-green" id="rep-income">0</div></div>
+                    <div class="stats-box expense-box glass-panel"><div class="summary-title" id="lbl-expense">Expense</div><div class="summary-amount text-red" id="rep-expense">0</div></div>
+                </div>
+
+                <div class="glass-panel ai-report-card" onclick="generateAIReport()">
+                    <span class="ai-report-icon"><i class="fa-solid fa-robot"></i></span>
+                    <span class="ai-report-texts">
+                        <b id="ai-report-title">AI Analysis</b>
+                        <small id="ai-report-sub">Let AI analyze this month for you</small>
+                    </span>
+                    <span class="pro-badge-small">PRO</span>
+                    <i class="fa-solid fa-chevron-right" style="color:var(--secondary-text); font-size:13px;"></i>
+                </div>
+
+                <div id="monthly-report-content">
+                    <div class="accordion-section glass-panel">
+                        <div class="accordion-header" onclick="toggleAccordion('acc-bal-content', this)">
+                            <span style="font-weight: bold; font-size: 14px; color: var(--text-color);" id="lbl-acc-bals">Account Balances</span>
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </div>
+                        <div id="acc-bal-content" class="accordion-content" style="display: none;">
+                            <div id="account-balances-container"></div>
+                        </div>
+                    </div>
+                    <div class="accordion-section glass-panel" style="margin-bottom: 15px;">
+                        <div class="accordion-header" onclick="toggleAccordion('budget-prog-content', this)">
+                            <span style="font-weight: bold; font-size: 14px; color: var(--text-color);" id="lbl-budget-usage">Budget Usage</span>
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </div>
+                        <div id="budget-prog-content" class="accordion-content" style="display: none;">
+                            <div id="budget-progress-container"></div>
+                        </div>
+                    </div>
+                    <div class="summary-card glass-panel">
+                        <div class="type-toggle-container chart-toggle glass-panel">
+                            <div id="chart-type-expense" class="type-btn chart-tab-btn active expense-glow" onclick="setChartType('Expense')">Expense</div>
+                            <div id="chart-type-income" class="type-btn chart-tab-btn" onclick="setChartType('Income')">Income</div>
+                        </div>
+                        <div class="chart-container" id="chart-holder">
+                            <canvas id="expensePieChart"></canvas>
+                        </div>
+                        <div id="chart-custom-legend" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 15px;"></div>
+                    </div>
+                    <div class="input-group glass-panel" style="margin-bottom: 15px; border-radius: 14px; padding: 12px 15px;">
+                        <i class="fa-solid fa-magnifying-glass input-icon" style="color: var(--primary-color);"></i>
+                        <input type="text" id="search-tx" placeholder="Search history (e.g., Food, 5000)" oninput="renderReport()" style="border:none; outline:none; background:transparent; width:100%; color:var(--text-color); font-weight:bold;">
+                    </div>
+                    <div id="recent-list"></div>
+                </div>
+                <div id="yearly-report-content" style="display:none;">
+                    <div class="summary-card glass-panel">
+                        <div class="chart-container"><canvas id="yearlyTrendChart"></canvas></div>
+                    </div>
+                    <div id="yearly-breakdown-list"></div>
+                </div>
+            </div>
+
+            <div id="tab-setting" class="tab-content">
+                <div class="apple-id-card glass-panel" onclick="openProfileModal()">
+                    <img id="settings-profile-img" src="https://img.icons8.com/color/512/user-male-circle--v1.png" alt="Profile" referrerpolicy="no-referrer">
+                    <div class="apple-id-info">
+                        <h3 id="settings-profile-name">User</h3>
+                        <p id="settings-profile-email">Loading...</p>
+                    </div>
+                    <i class="fa-solid fa-chevron-right arrow-icon"></i>
+                </div>
+                <div class="setting-item premium-btn glass-panel" onclick="openSubscription()">
+                    <div><span style="font-weight:800;"><i class="fa-solid fa-crown" style="margin-right:8px;"></i> <span id="sub-title">Upgrade to Pro</span></span></div>
+                    <i class="fa-solid fa-chevron-right" style="color: white;"></i>
+                </div>
+                
+                <div class="setting-item glass-panel" onclick="openThemeColorPicker()">
+                    <span><i class="fa-solid fa-palette input-icon-inline" style="background-color: #ff2d55;"></i> <span id="lbl-theme-color">Theme Color</span></span>
+                    <div style="display:flex; align-items:center;">
+                        <div id="current-color-preview" style="width:20px; height:20px; border-radius:50%; background-color:var(--primary-color); margin-right:10px; border:2px solid white; box-shadow:0 0 5px rgba(0,0,0,0.2);"></div>
+                        <i class="fa-solid fa-chevron-right" style="color:var(--secondary-text); font-size: 14px;"></i>
+                    </div>
+                </div>
+                <div class="setting-item glass-panel" onclick="openLangSheet()">
+                    <span><i class="fa-solid fa-globe input-icon-inline"></i> <span class="lbl-lang">Language</span></span>
+                    <div style="display:flex; align-items:center;">
+                        <span id="display-lang" style="color: var(--secondary-text); font-size: 15px; font-weight: 600;">English</span>
+                        <i class="fa-solid fa-chevron-right" style="margin-left:10px; color:var(--secondary-text); font-size: 14px;"></i>
+                    </div>
+                </div>
+                <div class="setting-item glass-panel" onclick="toggleTheme()">
+                    <span><i class="fa-solid fa-moon input-icon-inline" id="theme-icon"></i> <span class="lbl-theme">Display Theme</span></span>
+                    <div style="display:flex; align-items:center;">
+                        <span id="theme-text" style="color: var(--secondary-text); font-weight: 600; font-size: 14px;">Light</span>
+                        <i class="fa-solid fa-rotate" style="margin-left: 10px; color: var(--secondary-text); font-size: 12px;"></i>
+                    </div>
+                </div>
+                <div class="setting-item glass-panel" onclick="openTimePickerModal()" style="cursor: pointer;">
+                    <span><i class="fa-solid fa-bell input-icon-inline"></i> <span class="lbl-reminder">Daily Reminder</span></span>
+                    <div style="display:flex; align-items:center;">
+                        <span id="display-time" style="color: var(--primary-color); font-size: 15px; font-weight: 800; margin-right: 10px;">--:--</span>
+                        <i class="fa-solid fa-chevron-right" style="color:var(--secondary-text); font-size: 14px;"></i>
+                    </div>
+                </div>
+                <div class="setting-item glass-panel" onclick="openChangePassword()"><span><i class="fa-solid fa-key input-icon-inline"></i> <span class="lbl-pwd">Change Password</span></span><i class="fa-solid fa-chevron-right"></i></div>
+                <div class="setting-item glass-panel" onclick="window.showFamilySync()">
+                    <span><i class="fa-solid fa-users input-icon-inline"></i> <span id="lbl-family-sync">Family Sync</span> <span class="pro-badge">PRO</span></span>
+                    <i class="fa-solid fa-chevron-right arrow-icon"></i>
+                </div>
+                <div class="setting-item glass-panel" onclick="openAccountsManager()"><span><i class="fa-solid fa-wallet input-icon-inline"></i> <span id="lbl-manage-acc">Manage Accounts</span></span><i class="fa-solid fa-chevron-right"></i></div>
+                <div class="setting-item glass-panel" onclick="openCategoriesManager()"><span><i class="fa-solid fa-tags input-icon-inline"></i> <span id="lbl-manage-cat">Manage Categories</span></span><i class="fa-solid fa-chevron-right"></i></div>
+                <div class="setting-item glass-panel" onclick="openBudgetManager()"><span><i class="fa-solid fa-bullseye input-icon-inline"></i> <span id="lbl-manage-bud">Manage Budgets</span></span><i class="fa-solid fa-chevron-right"></i></div>
+                <div class="setting-item glass-panel" onclick="openRecurringManager()"><span><i class="fa-solid fa-rotate input-icon-inline"></i> <span id="lbl-manage-rec">Manage Recurring</span></span><i class="fa-solid fa-chevron-right"></i></div>
+                <div class="setting-item glass-panel" onclick="openGoalsManager()"><span><i class="fa-solid fa-piggy-bank input-icon-inline"></i> <span id="lbl-manage-goal">Manage Goals</span></span><i class="fa-solid fa-chevron-right"></i></div>
+                <div class="setting-item glass-panel" onclick="openDebtsManager()"><span><i class="fa-solid fa-hand-holding-dollar input-icon-inline"></i> <span id="lbl-manage-debt">Manage Debts</span></span><i class="fa-solid fa-chevron-right"></i></div>
+                <div class="setting-item glass-panel" onclick="openCurrenciesManager()"><span><i class="fa-solid fa-coins input-icon-inline"></i> <span id="lbl-manage-cur">Manage Currencies</span></span><i class="fa-solid fa-chevron-right"></i></div>
+                
+                <div class="setting-item glass-panel" onclick="setupAppPin()"><span><i class="fa-solid fa-lock input-icon-inline"></i> <span id="lbl-setup-pin">Setup App PIN</span> <span class="pro-badge">PRO</span></span><i class="fa-solid fa-chevron-right"></i></div>
+                <div class="setting-item glass-panel" onclick="setupBiometrics()"><span><i class="fa-solid fa-fingerprint input-icon-inline" style="background-color: #af52de;"></i> <span id="lbl-setup-bio">Setup Face ID / Fingerprint</span> <span class="pro-badge">PRO</span></span><i class="fa-solid fa-chevron-right"></i></div>
+                
+                <div class="setting-item glass-panel" onclick="exportJSON()">
+                    <span><i class="fa-solid fa-file-export input-icon-inline" style="background-color: #32ade6;"></i> <span id="lbl-backup">Backup Data</span></span>
+                    <i class="fa-solid fa-chevron-right"></i>
+                </div>
+                <div class="setting-item glass-panel" onclick="document.getElementById('import-json-input').click()">
+                    <span><i class="fa-solid fa-file-import input-icon-inline" style="background-color: #34c759;"></i> <span id="lbl-restore">Restore Data</span></span>
+                    <i class="fa-solid fa-chevron-right"></i>
+                </div>
+                <input type="file" id="import-json-input" accept=".json" style="display:none;" onchange="importJSON(this)">
+                <div class="setting-item glass-panel" onclick="showAbout()"><span><i class="fa-solid fa-circle-info input-icon-inline"></i> <span id="lbl-about">About</span></span><i class="fa-solid fa-chevron-right"></i></div>
+                <div class="export-group">
+                    <div class="setting-item export-btn csv-btn glass-panel" onclick="exportData()">
+                        <span><span class="pro-badge-small" style="margin-right: 5px;">PRO</span><i class="fa-solid fa-file-csv"></i> CSV</span>
+                    </div>
+                    <div class="setting-item export-btn pdf-btn glass-panel" onclick="exportAdvancedPDF()">
+                        <span><span class="pro-badge-small" style="margin-right: 5px;">PRO</span><i class="fa-solid fa-file-pdf"></i> PDF</span>
+                    </div>
+                </div>
+                <button onclick="logoutUser()" class="btn-logout glass-panel"><i class="fa-solid fa-right-from-bracket"></i> <span id="lbl-logout">Logout</span></button>
+            </div>
+        </div>
+
+        <div id="main-fab" class="fab-btn" onclick="openTransactionSheet()"><i class="fa-solid fa-plus"></i></div>
+        <div class="bottom-nav glass-panel" style="border-radius: 25px 25px 0 0 !important;">
+            <div id="nav-home" class="nav-item active" onclick="switchTab('home', this)"><i class="fa-solid fa-house"></i><span class="nav-home-text">Home</span></div>
+            <div id="nav-report" class="nav-item" onclick="switchTab('report', this)"><i class="fa-solid fa-chart-pie"></i><span class="nav-report-text">Report</span></div>
+            <div id="nav-setting" class="nav-item" onclick="switchTab('setting', this)"><i class="fa-solid fa-gear"></i><span class="nav-setting-text">Setting</span></div>
+        </div>
+
+        <div id="sheet-overlay" class="sheet-overlay" onclick="closeTransactionSheet()"></div>
+        <div id="lang-overlay" class="sheet-overlay" onclick="closeLangSheet()"></div>
+
+        <div id="lang-sheet" class="ios-bottom-sheet">
+            <div class="sheet-drag-handle" onclick="closeLangSheet()"></div>
+            <h3 style="text-align: center; margin-bottom: 20px; font-weight: 800; color: var(--text-color);">Select Language</h3>
+            <div class="setting-item glass-panel" onclick="selectLanguage('en')" style="margin-bottom: 10px;">
+                <span style="font-weight: 700; font-size: 16px;">English</span>
+                <i class="fa-solid fa-circle-check" id="lang-check-en" style="color:var(--primary-color); display: none;"></i>
+            </div>
+            <div class="setting-item glass-panel" onclick="selectLanguage('mm')">
+                <span style="font-weight: 700; font-size: 16px; font-family: 'Pyidaungsu', sans-serif;">မြန်မာ</span>
+                <i class="fa-solid fa-circle-check" id="lang-check-mm" style="color:var(--primary-color); display: none;"></i>
+            </div>
+        </div>
+
+        <div id="ai-chat-overlay" class="sheet-overlay" onclick="closeAIChat()"></div>
+        <div id="ai-chat-sheet" class="ios-bottom-sheet">
+            <div class="sheet-drag-handle" onclick="closeAIChat()"></div>
+            <div class="ai-chat-head">
+                <div class="ai-bot-avatar"><i class="fa-solid fa-robot"></i></div>
+                <div class="ai-bot-info">
+                    <h3>SUBUU AI</h3>
+                    <p class="ai-bot-status">Finance assistant · FX · Weather</p>
+                </div>
+                <button class="ai-voice-btn" id="ai-voice-btn" onclick="toggleAIVoice()" title="Voice replies"><i class="fa-solid fa-volume-high"></i></button>
+                <i class="fa-solid fa-circle-xmark ai-chat-close" onclick="closeAIChat()"></i>
+            </div>
+            <div id="ai-chat-messages"></div>
+            <div id="ai-chat-chips"></div>
+            <div class="ai-chat-inputbar glass-panel">
+                <button class="ai-mic-btn" id="ai-mic-btn" onclick="startAIVoiceInput()" title="Voice question"><i class="fa-solid fa-microphone"></i></button>
+                <input type="text" id="ai-chat-input" placeholder="Ask anything..." autocomplete="off">
+                <button onclick="handleAISend()" aria-label="Send"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+        </div>
+
+        <div id="transaction-sheet" class="ios-bottom-sheet">
+            <div class="sheet-drag-handle" onclick="closeTransactionSheet()"></div>
+            <div class="header" id="main-header" style="background:transparent; border:none; box-shadow:none; padding:0 0 15px 0;"><i class="fa-solid fa-pen-to-square"></i> <span id="lbl-trans-title">Transaction</span></div>
+            <div class="form-container" style="box-shadow: none; border: none; background: transparent !important; padding: 0;">
+                <div class="type-toggle-container glass-panel">
+                    <div id="type-expense" class="type-btn active expense" onclick="setTransactionType('Expense')">Expense</div>
+                    <div id="type-income" class="type-btn income" onclick="setTransactionType('Income')">Income</div>
+                    <div id="type-transfer" class="type-btn transfer" onclick="setTransactionType('Transfer')">Transfer</div>
+                </div>
+                <div class="amount-group-box glass-panel">
+                    <select id="trans-currency" style="background: transparent; border: none; outline: none;"></select>
+                    <i class="fa-solid fa-caret-down dropdown-icon" style="display:none;"></i>
+                    <input type="number" id="trans-amount" placeholder="0">
+                    <div class="amount-actions">
+                        <i class="fa-solid fa-microphone" id="voice-input-btn" onclick="startVoiceInput()" style="color: #ff2d55;"></i>
+                        <i class="fa-solid fa-calculator" onclick="openCalculator()"></i>
+                        <div id="camera-btn-wrapper" onclick="scanReceiptPrompt()">
+                            <i class="fa-solid fa-camera"></i>
+                            <span class="pro-badge-small">PRO</span>
+                        </div>
+                    </div>
+                </div>
+                <input type="file" id="camera-input" accept="image/*" style="display:none;" onchange="scanReceipt(this)">
+                <div class="input-group">
+                    <i class="fa-solid fa-calendar-days input-icon"></i>
+                    <input type="date" id="trans-date" onclick="try{this.showPicker()}catch(e){}" style="cursor: pointer; pointer-events: auto; z-index: 9999; position: relative; width: 100%; border: none; outline: none; background: transparent; color: var(--text-color); font-size: 15px; font-weight: 600;">
+                </div>
+                <div class="input-group glass-panel"><i class="fa-solid fa-wallet input-icon"></i><select id="trans-account" style="border:none; outline:none; background:transparent; width:100%;"></select><i class="fa-solid fa-chevron-down dropdown-icon-right"></i></div>
+                <div class="input-group glass-panel" id="to-account-group" style="display:none;"><i class="fa-solid fa-building-columns input-icon"></i><select id="trans-to-account" style="border:none; outline:none; background:transparent; width:100%;"></select><i class="fa-solid fa-chevron-down dropdown-icon-right"></i></div>
+                <div class="input-group glass-panel" id="category-group"><i class="fa-solid fa-tags input-icon"></i><select id="trans-category" style="border:none; outline:none; background:transparent; width:100%;"></select><i class="fa-solid fa-chevron-down dropdown-icon-right"></i></div>
+                <div class="input-group glass-panel nl-smart-row">
+                    <i class="fa-solid fa-wand-magic-sparkles input-icon" style="background-color: #af52de;"></i>
+                    <input type="text" id="ai-smart-input" placeholder='Try: "Lunch 8000" then tap ✨' autocomplete="off" style="border:none; outline:none; background:transparent; width:100%; color:var(--text-color); font-weight:600;">
+                    <span class="pro-badge-small">PRO</span>
+                    <i class="fa-solid fa-circle-arrow-right nl-go-btn" onclick="parseNaturalTransaction()" title="Parse"></i>
+                </div>
+                <div class="input-group glass-panel"><i class="fa-solid fa-pen input-icon"></i><input type="text" id="trans-note" placeholder="Note" style="border:none; outline:none; background:transparent; width:100%;"></div>
+                
+                <div class="input-group glass-panel" style="position:relative; overflow:hidden; cursor:pointer;">
+                    <i class="fa-solid fa-paperclip input-icon" style="color:var(--primary-color);"></i>
+                    <span id="receipt-file-name" style="flex:1; color:var(--secondary-text); font-size:14px; font-weight:600;">Attach Receipt Image</span>
+                    <input type="file" id="trans-receipt-file" accept="image/*" style="position:absolute; left:0; top:0; width:100%; height:100%; opacity:0; cursor:pointer; z-index:10;" onchange="handleReceiptSelection(this)">
+                </div>
+                <div id="receipt-preview-box" style="display:none; position:relative; width:80px; height:80px; margin-bottom:15px; margin-left:5px;">
+                    <img id="receipt-preview-img" src="" style="width:100%; height:100%; border-radius:12px; object-fit:cover; border:2px solid var(--primary-color);">
+                    <i class="fa-solid fa-circle-xmark" style="position:absolute; top:-8px; right:-8px; color:#ff3b30; font-size:22px; cursor:pointer; background:white; border-radius:50%; z-index:15;" onclick="removeReceipt()"></i>
+                </div>
+
+                <div class="recurring-group">
+                    <input type="checkbox" id="trans-recurring">
+                    <label for="trans-recurring" id="lbl-trans-rec">Repeat Monthly</label>
+                </div>
+                <button id="save-btn" onclick="saveTransaction()"><i class="fa-solid fa-check"></i> <span id="lbl-btn-save">Save</span></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="custom-modal" class="modal-overlay"><div class="modal-box text-center glass-panel"><h3 id="modal-title">Title</h3><p id="modal-message"></p><div id="modal-buttons"></div></div></div>
+    
+    <div id="profile-modal" class="modal-overlay"><div class="modal-box text-center glass-panel"><h3>Update Profile</h3><div class="profile-img-wrapper" style="margin-top: 20px;"><label for="profile-upload" style="cursor: pointer; display: block; position: relative; width: 100px; height: 100px; margin: 0 auto;"><img id="modal-profile-img" src="https://img.icons8.com/color/512/user-male-circle--v1.png" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary-color);" referrerpolicy="no-referrer"><div class="camera-badge" style="position: absolute; bottom: 0; right: 0; background: #007aff; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white;"><i class="fa-solid fa-camera"></i></div></label><input type="file" id="profile-upload" accept="image/*" style="display: none;" onchange="uploadProfilePicture(this)"></div><h4 id="profile-email-display" style="margin-bottom: 5px; margin-top: 15px; word-break: break-all;">User</h4><p id="profile-plan-display" style="font-weight: bold; margin-bottom: 20px; font-size: 13px;"></p><button onclick="closeProfileModal()" class="btn-close">Close</button></div></div>
+    <div id="password-modal" class="modal-overlay"><div class="modal-box glass-panel"><h3>Change Password</h3><input type="password" id="new-password" placeholder="New Password" class="modal-input glass-panel" style="width: 100%; padding: 15px; border-radius: 14px; border: none; outline: none; margin: 20px 0;"><button onclick="updateUserPassword()">Update Password</button><button onclick="closeChangePassword()" class="btn-close mt-10">Cancel</button></div></div>
+    
+    <div id="subscription-modal" class="modal-overlay">
+        <div class="modal-box no-padding glass-panel" style="max-height: 92vh; overflow-y: auto;">
+            <div class="premium-header" style="background: linear-gradient(135deg, #ffcc00, #ff9500); color: white; padding: 35px 20px; text-align: center;">
+                <i class="fa-solid fa-crown" style="font-size: 45px; margin-bottom: 15px;"></i>
+                <h3>MTW SUBUU PRO</h3>
+            </div>
+
+            <div id="plan-selection">
+                <div class="plan-list" style="padding: 20px;">
+                    <div class="plan-card" onclick="purchasePlan('1 Month')"><div><div class="plan-title">1 Month</div><div class="plan-desc">Short term</div></div><div class="plan-price">3,000 MMK</div></div>
+                    <div class="plan-card" onclick="purchasePlan('3 Months')"><div><div class="plan-title">3 Months</div><div class="plan-desc">Save 10%</div></div><div class="plan-price">8,000 MMK</div></div>
+                    <div class="plan-card popular" onclick="purchasePlan('6 Months')"><div><div class="plan-title">6 Months</div><div class="plan-desc">Save 15%</div></div><div class="plan-price">15,000 MMK</div><span class="popular-badge">POPULAR</span></div>
+                    <div class="plan-card" onclick="purchasePlan('1 Year')"><div><div class="plan-title">1 Year</div><div class="plan-desc">Best Value</div></div><div class="plan-price">25,000 MMK</div></div>
+                    <div class="plan-card" onclick="purchasePlan('Lifetime')"><div><div class="plan-title">Lifetime</div><div class="plan-desc">Pay once</div></div><div class="plan-price">100,000 MMK</div></div>
+                </div>
+                <div class="modal-footer" style="padding: 0 20px 20px;"><button onclick="closeSubscription()" class="btn-close">Cancel</button></div>
+            </div>
+
+            <div id="payment-form" style="display:none; padding: 20px;">
+                <button onclick="backToPlans()" class="btn-close" style="background:var(--input-bg); color:var(--text-color); margin-bottom:15px;"><i class="fa-solid fa-arrow-left"></i> <span id="lbl-back-plans">Plans</span></button>
+
+                <div class="glass-panel" style="padding:14px; border-radius:14px; margin-bottom:15px; text-align:center; background:rgba(255,159,10,0.08);">
+                    <p id="lbl-your-plan" style="font-size:11px; color:var(--secondary-text); font-weight:800; letter-spacing:1px; margin:0;">SELECTED PLAN</p>
+                    <p id="selected-plan-label" style="font-size:18px; font-weight:800; color:var(--primary-color); margin:6px 0 0 0;">—</p>
+                </div>
+
+                <label id="lbl-pay-method" style="font-size:12px; font-weight:700; color:var(--secondary-text); display:block; margin-bottom:6px;">Payment Method</label>
+                <div class="input-group glass-panel"><i class="fa-solid fa-money-bill-wave input-icon"></i><select id="payment-method" style="border:none; outline:none; background:transparent; width:100%; color:var(--text-color); font-weight:600;"><option value="KPay">KPay</option><option value="WavePay">WavePay</option><option value="Viber">Viber</option><option value="Bank Transfer">Bank Transfer</option><option value="Other">Other</option></select><i class="fa-solid fa-chevron-down dropdown-icon-right"></i></div>
+
+                <label id="lbl-pay-ref" style="font-size:12px; font-weight:700; color:var(--secondary-text); display:block; margin:15px 0 6px 0;">Reference / Transaction ID</label>
+                <div class="input-group glass-panel"><i class="fa-solid fa-hashtag input-icon"></i><input type="text" id="payment-reference" placeholder="e.g., KPAY123456789" autocomplete="off" spellcheck="false" style="border:none; outline:none; background:transparent; width:100%; color:var(--text-color); font-weight:600;"></div>
+
+                <label id="lbl-pay-proof" style="font-size:12px; font-weight:700; color:var(--secondary-text); display:block; margin:15px 0 6px 0;">Payment Screenshot</label>
+                <div class="input-group glass-panel" style="position:relative; overflow:hidden; cursor:pointer;">
+                    <i class="fa-solid fa-paperclip input-icon" style="color:var(--primary-color);"></i>
+                    <span id="payment-proof-name" style="flex:1; color:var(--secondary-text); font-size:14px; font-weight:600;">Upload payment screenshot</span>
+                    <input type="file" id="payment-proof-file" accept="image/*" style="position:absolute; left:0; top:0; width:100%; height:100%; opacity:0; cursor:pointer; z-index:10;" onchange="updatePaymentProofName(this)">
+                </div>
+
+                <p id="lbl-payment-note" style="font-size:12px; color:var(--secondary-text); text-align:center; margin:18px 0 8px 0;"><i class="fa-solid fa-shield-halved" style="margin-right:4px;"></i>Admin will verify your payment before Pro access is activated.</p>
+                <button onclick="submitPaymentRequest()"><i class="fa-solid fa-paper-plane"></i> <span id="lbl-pay-submit">Submit for Review</span></button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="setup-pin-modal" class="modal-overlay"><div class="modal-box text-center glass-panel"><h3>Setup App PIN</h3><p style="font-size: 13px; color: var(--secondary-text); margin: 10px 0 20px 0;">Protect your app with a 4-digit numeric PIN.</p><div class="input-group glass-panel"><i class="fa-solid fa-lock input-icon"></i><input type="password" id="new-pin-input" placeholder="4-Digit PIN" maxlength="4" inputmode="numeric" style="font-size: 20px; letter-spacing: 10px; font-weight: 800;"></div><button onclick="saveAppPin()">Save PIN</button><button onclick="removeAppPin()" class="btn-close" style="background:#ff3b30; margin-top:10px;">Remove PIN</button><button onclick="closeSetupPin()" class="btn-close mt-10">Cancel</button></div></div>
+    
+    <div id="acc-manager-modal" class="modal-overlay"><div class="modal-box glass-panel"><h3 id="lbl-mdl-acc">Manage Accounts</h3><div class="input-group glass-panel" style="margin-top: 15px;"><input type="text" id="new-acc-name" placeholder="New Account Name"></div><button onclick="addAccount()" style="margin-bottom: 15px;">Add Account</button><div id="account-manager-list" style="max-height: 200px; overflow-y: auto;"></div><button onclick="closeAccountsManager()" class="btn-close mt-10">Close</button></div></div>
+    <div id="cat-manager-modal" class="modal-overlay"><div class="modal-box glass-panel"><h3 id="lbl-mdl-cat">Manage Categories</h3><div class="input-group glass-panel" style="margin-top: 15px;"><input type="text" id="new-cat-name" placeholder="New Category Name"></div><div class="input-group glass-panel"><select id="new-cat-type" style="border:none; outline:none; background:transparent; width:100%;"><option value="Expense">Expense</option><option value="Income">Income</option></select><i class="fa-solid fa-caret-down dropdown-icon-right"></i></div><button onclick="addCategory()" style="margin-bottom: 15px;">Add Category</button><div id="category-manager-list" style="max-height: 200px; overflow-y: auto;"></div><button onclick="closeCategoriesManager()" class="btn-close mt-10">Close</button></div></div>
+    <div id="budget-manager-modal" class="modal-overlay"><div class="modal-box glass-panel"><h3 id="lbl-mdl-bud">Manage Budgets</h3><div class="input-group glass-panel" style="margin-top: 15px;"><select id="budget-category" style="border:none; outline:none; background:transparent; width:100%;"></select><i class="fa-solid fa-caret-down dropdown-icon-right"></i></div><div class="input-group glass-panel"><input type="number" id="budget-amount" placeholder="Budget Amount (MMK)"></div><button onclick="addBudget()" style="margin-bottom: 15px;">Add Budget</button><div id="budget-manager-list" style="max-height: 200px; overflow-y: auto;"></div><button onclick="closeBudgetManager()" class="btn-close mt-10">Close</button></div></div>
+    <div id="goals-manager-modal" class="modal-overlay"><div class="modal-box glass-panel"><h3 id="lbl-mdl-goal">Manage Goals</h3><div class="input-group glass-panel" style="margin-top: 15px;"><input type="text" id="goal-name" placeholder="Goal Name"></div><div class="input-group glass-panel"><input type="number" id="goal-target" placeholder="Target Amount (MMK)"></div><button onclick="addGoal()" style="margin-bottom: 15px;">Add Goal</button><div id="goals-manager-list" style="max-height: 200px; overflow-y: auto;"></div><button onclick="closeGoalsManager()" class="btn-close mt-10">Close</button></div></div>
+    <div id="currency-manager-modal" class="modal-overlay"><div class="modal-box glass-panel"><h3 id="lbl-mdl-cur">Manage Currencies</h3><div class="input-group glass-panel" style="margin-top: 15px;"><input type="text" id="curr-code" placeholder="Currency Code (e.g., USD)"></div><div class="input-group glass-panel"><input type="number" id="curr-rate" placeholder="Exchange Rate"></div><button onclick="addCurrency()" style="margin-bottom: 15px;">Add Currency</button>
+<button onclick="updateLiveRates()" class="btn-close" style="background:var(--input-bg); color:var(--text-color); margin-bottom: 15px;"><i class="fa-solid fa-cloud-arrow-down" style="margin-right:6px; color:var(--primary-color);"></i> <span id="lbl-live-rates">Update Live Rates</span></button>
+<div id="currency-manager-list" style="max-height: 200px; overflow-y: auto;"></div><button onclick="closeCurrenciesManager()" class="btn-close mt-10">Close</button></div></div>
+    <div id="recurring-manager-modal" class="modal-overlay"><div class="modal-box glass-panel"><h3 id="lbl-mdl-rec">Manage Recurring</h3><div class="input-group glass-panel" style="margin-top: 15px;"><input type="text" id="rec-name" placeholder="Subscription/Bill Name"></div><div class="input-group glass-panel"><input type="number" id="rec-amount" placeholder="Amount (MMK)"></div><button id="save-rec-btn" onclick="addRecurring()" style="margin-bottom: 10px;">Add</button><div id="recurring-manager-list" style="max-height: 200px; overflow-y: auto;"></div><button onclick="closeRecurringManager()" class="btn-close mt-10">Close</button></div></div>
+    <div id="debts-manager-modal" class="modal-overlay"><div class="modal-box glass-panel"><h3 id="lbl-mdl-debt">Manage Debts</h3><div class="input-group glass-panel" style="margin-top: 15px;"><input type="text" id="debt-name" placeholder="Debt/Person Name"></div><div class="input-group glass-panel"><input type="number" id="debt-amount" placeholder="Amount (MMK)"></div><button onclick="addDebt()" style="margin-bottom: 15px;">Add Debt</button><div id="debts-manager-list" style="max-height: 200px; overflow-y: auto;"></div><button onclick="closeDebtsManager()" class="btn-close mt-10">Close</button></div></div>
+    
+    <div id="family-sync-modal" class="modal-overlay">
+        <div class="modal-box glass-panel">
+            <h3 style="text-align:center;"><i class="fa-solid fa-users" style="color:var(--primary-color); margin-right:8px;"></i><span id="lbl-family-sync-title">Family Sync</span></h3>
+            <p id="lbl-family-note" style="font-size:12px; color:var(--secondary-text); text-align:center; margin:10px 0 15px 0;">Share your code, or enter a partner's code. Viewing is read-only.</p>
+
+            <div id="family-viewing-box" style="display:none; background:rgba(52,199,89,0.12); border:1px solid rgba(52,199,89,0.35); padding:10px 12px; border-radius:12px; margin-bottom:15px; text-align:center; font-size:13px; color:var(--text-color);">
+                👀 <span id="lbl-viewing">Viewing</span>: <b id="family-viewing-name"></b>
+            </div>
+
+            <div class="glass-panel" style="text-align:center; padding:15px; border-radius:14px;">
+                <img id="family-qr-img" src="" alt="QR Code" referrerpolicy="no-referrer" style="width:170px; height:170px; background:white; padding:8px; border-radius:12px; border:1px solid var(--glass-border);">
+                <div id="my-sync-code" onclick="copySyncCode()" style="font-weight:700; font-size:12px; letter-spacing:0.5px; color:var(--primary-color); margin:12px auto 14px auto; cursor:pointer; word-break:break-all; line-height:1.5; max-height:66px; overflow-y:auto; background:rgba(0,0,0,0.04); border-radius:10px; padding:8px 10px; max-width:260px;">······</div>
+                <button onclick="copySyncCode()" style="margin-bottom:8px;"><i class="fa-solid fa-copy"></i> <span id="lbl-copy-code">Copy Invite</span></button>
+                <button onclick="startFamilyScanner()" class="btn-close" style="background:var(--input-bg); color:var(--text-color);"><i class="fa-solid fa-camera"></i> Scan Partner QR</button>
+                <button onclick="regenerateFamilyCode()" class="btn-close" style="background:#8e8e93; margin-top:8px;"><i class="fa-solid fa-rotate"></i> <span id="lbl-new-code">New Code (Revoke Access)</span></button>
+            </div>
+
+            <hr style="border:0; border-top:1px solid var(--glass-border); margin:15px 0;">
+            <p style="font-size:13px; color:var(--secondary-text); margin-bottom:10px;" id="lbl-family-enter">Or paste partner's invite code:</p>
+            <div class="input-group glass-panel"><input type="text" id="partner-sync-code" placeholder="MTW1.xxxxxxxx" maxlength="120" autocomplete="off" spellcheck="false" style="text-align:center; font-size:13px;"></div>
+            <button onclick="connectFamily()" style="margin-top:12px;"><i class="fa-solid fa-link"></i> Connect</button>
+            <button onclick="disconnectFamily()" class="btn-close" style="background:#ff3b30; margin-top:10px;">Disconnect All</button>
+            <button onclick="closeFamilySync()" class="btn-close mt-10">Close</button>
+        </div>
+    </div>
+
+    <div id="theme-color-picker-modal" class="modal-overlay">
+        <div class="modal-box text-center glass-panel">
+            <h3 id="lbl-choose-color">Choose Accent Color</h3>
+            <div style="display:flex; justify-content:center; gap:10px; flex-wrap:nowrap; overflow-x:auto; margin:25px 0; padding-bottom:10px; -webkit-overflow-scrolling: touch;" id="color-options-container">
+                <div class="color-swatch" style="background:#ff9f0a; width:36px; height:36px; flex-shrink:0;" onclick="setAppThemeColor('#ff9f0a')"></div>
+                <div class="color-swatch" style="background:#007aff; width:36px; height:36px; flex-shrink:0;" onclick="setAppThemeColor('#007aff')"></div>
+                <div class="color-swatch" style="background:#34c759; width:36px; height:36px; flex-shrink:0;" onclick="setAppThemeColor('#34c759')"></div>
+                <div class="color-swatch" style="background:#af52de; width:36px; height:36px; flex-shrink:0;" onclick="setAppThemeColor('#af52de')"></div>
+                <div class="color-swatch" style="background:#ff2d55; width:36px; height:36px; flex-shrink:0;" onclick="setAppThemeColor('#ff2d55')"></div>
+                <div class="color-swatch" style="background:#32ade6; width:36px; height:36px; flex-shrink:0;" onclick="setAppThemeColor('#32ade6')"></div>
+            </div>
+            <button onclick="closeThemeColorPicker()" class="btn-close">Close</button>
+        </div>
+    </div>
+
+    <div id="month-picker-modal" class="modal-overlay">
+        <div class="modal-box text-center glass-panel" style="max-width: 340px;">
+            <h3 id="picker-modal-title">Select Date</h3>
+            <div style="margin: 15px 0;">
+                <label style="font-weight: bold; margin-right: 10px;">Year</label>
+                <select id="picker-year" class="glass-panel" style="padding: 8px 15px; border-radius: 10px;"></select>
+            </div>
+            <div id="picker-month-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 15px 0;"></div>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="closeMonthPicker()" class="btn-close" style="flex:1; margin-top:0;">Cancel</button>
+                <button onclick="applyMonthPicker()" style="flex:1;">Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="time-picker-modal" class="modal-overlay">
+        <div class="modal-box text-center glass-panel" style="max-width: 320px; padding: 25px 15px !important;">
+            <h3 style="margin-bottom: 20px;">Set Daily Reminder</h3>
+            
+            <div class="roller-container glass-panel">
+                <div class="roller-highlight"></div>
+                <div class="roller-col" id="roller-hour" onscroll="updateRollerSelection('roller-hour')"></div>
+                <div class="roller-col" id="roller-minute" onscroll="updateRollerSelection('roller-minute')"></div>
+                <div class="roller-col" id="roller-ampm" onscroll="updateRollerSelection('roller-ampm')"></div>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 25px;">
+                <button onclick="confirmTimePicker()" style="flex:1;">Set Alarm</button>
+                <button onclick="closeTimePicker()" class="btn-close" style="flex:1; margin-top:0;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <button id="install-app-btn" onclick="installApp()" style="display: none; position: fixed; top: 75px; left: 50%; transform: translateX(-50%); z-index: 9999; background: #34c759; color: white; padding: 10px 25px; border-radius: 20px; font-weight: 800; border: none; box-shadow: 0 5px 15px rgba(52, 199, 89, 0.4); cursor: pointer;">
+        <i class="fa-solid fa-download" style="margin-right: 8px;"></i> Install App
+    </button>
+
+    <script type="module" src="script.js"></script>
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker Registered!'))
+                    .catch(err => console.error('Service Worker Error!', err));
+            });
+        }
+    </script>
+</body>
+</html>

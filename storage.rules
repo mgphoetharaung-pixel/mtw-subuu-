@@ -1,0 +1,46 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
+    }
+
+    function validImage() {
+      return request.resource != null
+        && request.resource.contentType.matches('image/.*')
+        && request.resource.size < 10 * 1024 * 1024;
+    }
+
+    match /profile_pictures/{uid}/{fileName} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create, update: if isOwner(uid) && validImage();
+      allow delete: if isOwner(uid) || isAdmin();
+    }
+
+    match /receipts/{uid}/{fileName} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create, update: if isOwner(uid) && validImage();
+      allow delete: if isOwner(uid) || isAdmin();
+    }
+
+    match /payment_proofs/{uid}/{fileName} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid) && validImage();
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

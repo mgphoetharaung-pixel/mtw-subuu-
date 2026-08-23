@@ -1,0 +1,17 @@
+{
+  "name": "MTW SUBUU Pro",
+  "short_name": "MTW SUBUU",
+  "description": "A professional and smart expense tracker designed to manage your daily finances seamlessly.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#27ae60",
+  "icons": [
+    {
+      "src": "https://img.icons8.com/fluent/512/piggy-bank.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
