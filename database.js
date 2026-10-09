@@ -1,4 +1,4 @@
-﻿import { db } from './firebase-config.js';
+import { db } from './firebase-config.js';
 import { collection, addDoc, deleteDoc, doc, updateDoc, onSnapshot, query, orderBy, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // ပြုတ်ကျန်ခဲ့သော Global State များကို အတိအကျ ကြေညာပေးခြင်း
@@ -221,7 +221,70 @@ window.addCategory = async () => {
 window.addBudget = async () => { if (window.isViewingPartner && window.isViewingPartner()) return window.readOnlyAlert(); const cat = document.getElementById('budget-category').value, amt = parseFloat(document.getElementById('budget-amount').value); if(!cat || isNaN(amt)) return window.customAlert("Please enter valid amount."); if(window.isBudEditMode && window.budEditId) await updateDoc(doc(db,"users",window.activeUid,"budgets",window.budEditId), {category:cat, amount:amt}); else await addDoc(collection(db,"users",window.activeUid,"budgets"), {category:cat, amount:amt}); if(window.cancelBudEdit) window.cancelBudEdit(); };
 window.addGoal = async () => { if (window.isViewingPartner && window.isViewingPartner()) return window.readOnlyAlert(); const name = document.getElementById('goal-name').value.trim(), target = parseFloat(document.getElementById('goal-target').value); if(!name || isNaN(target)) return window.customAlert("Please enter valid name and target."); if(window.isGoalEditMode && window.goalEditId) await updateDoc(doc(db,"users",window.activeUid,"goals",window.goalEditId), {name, targetAmount:target}); else await addDoc(collection(db,"users",window.activeUid,"goals"), {name, targetAmount:target, savedAmount:0}); if(window.cancelGoalEdit) window.cancelGoalEdit(); };
 window.addCurrency = async () => { if (window.isViewingPartner && window.isViewingPartner()) return window.readOnlyAlert(); const code = document.getElementById('curr-code').value.trim().toUpperCase(), rate = parseFloat(document.getElementById('curr-rate').value); if(!code || isNaN(rate)) return window.customAlert("Please enter valid code and rate."); if(window.isCurEditMode && window.curEditId) await updateDoc(doc(db,"users",window.activeUid,"currencies",window.curEditId), {code, rate}); else await addDoc(collection(db,"users",window.activeUid,"currencies"), {code, rate}); if(window.cancelCurEdit) window.cancelCurEdit(); };
-window.addDebt = async () => { \n    if (window.isViewingPartner && window.isViewingPartner()) return window.readOnlyAlert(); \n    const isMM = localStorage.getItem('mtw_lang') === 'mm'; \n    const nameEl = document.getElementById('debt-name'), amtEl = document.getElementById('debt-amount'); \n    const name = nameEl ? nameEl.value.trim() : '', amount = amtEl ? parseFloat(amtEl.value) : NaN; \n    const paidEl = document.getElementById('debt-paid'), paidAmount = paidEl ? (parseFloat(paidEl.value) || 0) : 0; \n    const type = window.debtFormType === 'borrow' ? 'borrow' : 'lend'; \n    const dueEl = document.getElementById('debt-due'), dueDate = dueEl ? dueEl.value : ''; \n    const noteEl = document.getElementById('debt-notes'), notes = noteEl ? noteEl.value.trim() : ''; \n    if(!name || isNaN(amount) || amount <= 0) return window.customAlert(isMM ? "နာမည်နှင့် မှန်ကန်သော ပမာဏ ထည့်ပါ။" : "Please enter valid name and amount."); \n    const status = paidAmount >= amount ? 'settled' : 'open'; \n    try { \n        if(window.isDebtEditMode && window.debtEditId) { \n            await updateDoc(doc(db,"users",window.activeUid,"debts",window.debtEditId), {name, amount, paidAmount, type, dueDate, notes, status}); \n        } else { \n            await addDoc(collection(db,"users",window.activeUid,"debts"), {name, amount, paidAmount, type, dueDate, notes, status, createdAt: new Date().toISOString()}); \n        } \n        if(window.cancelDebtEdit) window.cancelDebtEdit(); \n    } catch(e) { window.customAlert(e.message); } \n};\n\nwindow.recordDebtPayment = async (debtId) => { \n    if (window.isViewingPartner && window.isViewingPartner()) return window.readOnlyAlert(); \n    const isMM = localStorage.getItem('mtw_lang') === 'mm'; \n    const d = (window.globalDebts || []).find(x => x.id === debtId); \n    if(!d) return; \n    const remaining = Math.max(0, (Number(d.amount) || 0) - (Number(d.paidAmount) || 0)); \n    const safeName = String(d.name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;'); \n    const t = document.getElementById('modal-title'); \n    if(t) { t.innerText = isMM ? 'ငွေသွင်းမှတ်မယ်' : 'Record Payment'; t.style.display = 'block'; } \n    const m = document.getElementById('modal-message'); \n    if(m) m.innerHTML = `<div style="color:var(--text-color); font-size:14px; margin-bottom:10px;">${safeName} · ${isMM ? 'ကျန်ငွေ' : 'Remaining'}: <b>${remaining.toLocaleString()} Ks</b></div><div class="input-group glass-panel"><input type="number" id="debt-pay-input" placeholder="${isMM ? 'ပမာဏ (MMK)' : 'Amount (MMK)'}" style="width:100%;"></div>`; \n    const b = document.getElementById('modal-buttons'); \n    if(b) b.innerHTML = `<div style="display:flex; gap:10px;"><button class="glass-panel" onclick="closeCustomModal()" style="color:var(--text-color); border:none;">${isMM ? 'မလုပ်တော့ဘူး' : 'Cancel'}</button><button class="glass-panel" style="background:var(--primary-color) !important; color:white; border:none;" onclick="submitDebtPayment('${debtId}')">${isMM ? 'သိမ်းမယ်' : 'Save'}</button></div>`; \n    const c = document.getElementById('custom-modal'); \n    if(c) c.style.display = 'flex'; \n};\n\nwindow.submitDebtPayment = async (debtId) => { \n    if (window.isViewingPartner && window.isViewingPartner()) return window.readOnlyAlert(); \n    const isMM = localStorage.getItem('mtw_lang') === 'mm'; \n    const inp = document.getElementById('debt-pay-input'); \n    const add = inp ? parseFloat(inp.value) : NaN; \n    if(isNaN(add) || add <= 0) return window.customAlert(isMM ? "မှန်ကန်သော ပမာဏ ထည့်ပါ။" : "Please enter a valid amount."); \n    const d = (window.globalDebts || []).find(x => x.id === debtId); \n    if(!d) { window.closeCustomModal(); return; } \n    const total = Number(d.amount) || 0; \n    const newPaid = Math.min(total, (Number(d.paidAmount) || 0) + add); \n    try { \n        await updateDoc(doc(db,"users",window.activeUid,"debts",debtId), {paidAmount: newPaid, status: newPaid >= total ? 'settled' : 'open'}); \n        window.closeCustomModal(); \n    } catch(e) { window.closeCustomModal(); window.customAlert(e.message); } \n};\n\nwindow.toggleDebtSettled = async (debtId) => { \n    if (window.isViewingPartner && window.isViewingPartner()) return window.readOnlyAlert(); \n    const d = (window.globalDebts || []).find(x => x.id === debtId); \n    if(!d) return; \n    const total = Number(d.amount) || 0; \n    try { \n        if((d.status || 'open') === 'settled') await updateDoc(doc(db,"users",window.activeUid,"debts",debtId), {status: 'open'}); \n        else await updateDoc(doc(db,"users",window.activeUid,"debts",debtId), {status: 'settled', paidAmount: total}); \n    } catch(e) { window.customAlert(e.message); } \n};
+window.addDebt = async () => {
+    if (window.isViewingPartner && window.isViewingPartner()) return window.readOnlyAlert();
+    const isMM = localStorage.getItem('mtw_lang') === 'mm';
+    const nameEl = document.getElementById('debt-name'), amtEl = document.getElementById('debt-amount');
+    const name = nameEl ? nameEl.value.trim() : '', amount = amtEl ? parseFloat(amtEl.value) : NaN;
+    const paidEl = document.getElementById('debt-paid'), paidAmount = paidEl ? (parseFloat(paidEl.value) || 0) : 0;
+    const type = window.debtFormType === 'borrow' ? 'borrow' : 'lend';
+    const dueEl = document.getElementById('debt-due'), dueDate = dueEl ? dueEl.value : '';
+    const noteEl = document.getElementById('debt-notes'), notes = noteEl ? noteEl.value.trim() : '';
+    if(!name || isNaN(amount) || amount <= 0) return window.customAlert(isMM ? "နာမည်နှင့် မှန်ကန်သော ပမာဏ ထည့်ပါ။" : "Please enter valid name and amount.");
+    const status = paidAmount >= amount ? 'settled' : 'open';
+    try {
+        if(window.isDebtEditMode && window.debtEditId) {
+            await updateDoc(doc(db,"users",window.activeUid,"debts",window.debtEditId), {name, amount, paidAmount, type, dueDate, notes, status});
+        } else {
+            await addDoc(collection(db,"users",window.activeUid,"debts"), {name, amount, paidAmount, type, dueDate, notes, status, createdAt: new Date().toISOString()});
+        }
+        if(window.cancelDebtEdit) window.cancelDebtEdit();
+    } catch(e) { window.customAlert(e.message); }
+};
+
+window.recordDebtPayment = async (debtId) => {
+    if (window.isViewingPartner && window.isViewingPartner()) return window.readOnlyAlert();
+    const isMM = localStorage.getItem('mtw_lang') === 'mm';
+    const d = (window.globalDebts || []).find(x => x.id === debtId);
+    if(!d) return;
+    const remaining = Math.max(0, (Number(d.amount) || 0) - (Number(d.paidAmount) || 0));
+    const safeName = String(d.name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const t = document.getElementById('modal-title');
+    if(t) { t.innerText = isMM ? 'ငွေသွင်းမှတ်မယ်' : 'Record Payment'; t.style.display = 'block'; }
+    const m = document.getElementById('modal-message');
+    if(m) m.innerHTML = `<div style="color:var(--text-color); font-size:14px; margin-bottom:10px;">${safeName} · ${isMM ? 'ကျန်ငွေ' : 'Remaining'}: <b>${remaining.toLocaleString()} Ks</b></div><div class="input-group glass-panel"><input type="number" id="debt-pay-input" placeholder="${isMM ? 'ပမာဏ (MMK)' : 'Amount (MMK)'}" style="width:100%;"></div>`;
+    const b = document.getElementById('modal-buttons');
+    if(b) b.innerHTML = `<div style="display:flex; gap:10px;"><button class="glass-panel" onclick="closeCustomModal()" style="color:var(--text-color); border:none;">${isMM ? 'မလုပ်တော့ဘူး' : 'Cancel'}</button><button class="glass-panel" style="background:var(--primary-color) !important; color:white; border:none;" onclick="submitDebtPayment('${debtId}')">${isMM ? 'သိမ်းမယ်' : 'Save'}</button></div>`;
+    const c = document.getElementById('custom-modal');
+    if(c) c.style.display = 'flex';
+};
+
+window.submitDebtPayment = async (debtId) => {
+    if (window.isViewingPartner && window.isViewingPartner()) return window.readOnlyAlert();
+    const isMM = localStorage.getItem('mtw_lang') === 'mm';
+    const inp = document.getElementById('debt-pay-input');
+    const add = inp ? parseFloat(inp.value) : NaN;
+    if(isNaN(add) || add <= 0) return window.customAlert(isMM ? "မှန်ကန်သော ပမာဏ ထည့်ပါ။" : "Please enter a valid amount.");
+    const d = (window.globalDebts || []).find(x => x.id === debtId);
+    if(!d) { window.closeCustomModal(); return; }
+    const total = Number(d.amount) || 0;
+    const newPaid = Math.min(total, (Number(d.paidAmount) || 0) + add);
+    try {
+        await updateDoc(doc(db,"users",window.activeUid,"debts",debtId), {paidAmount: newPaid, status: newPaid >= total ? 'settled' : 'open'});
+        window.closeCustomModal();
+    } catch(e) { window.closeCustomModal(); window.customAlert(e.message); }
+};
+
+window.toggleDebtSettled = async (debtId) => {
+    if (window.isViewingPartner && window.isViewingPartner()) return window.readOnlyAlert();
+    const d = (window.globalDebts || []).find(x => x.id === debtId);
+    if(!d) return;
+    const total = Number(d.amount) || 0;
+    try {
+        if((d.status || 'open') === 'settled') await updateDoc(doc(db,"users",window.activeUid,"debts",debtId), {status: 'open'});
+        else await updateDoc(doc(db,"users",window.activeUid,"debts",debtId), {status: 'settled', paidAmount: total});
+    } catch(e) { window.customAlert(e.message); }
+};
 window.addRecurring = async () => { if (window.isViewingPartner && window.isViewingPartner()) return window.readOnlyAlert(); const name=document.getElementById('rec-name').value.trim(), amount=parseFloat(document.getElementById('rec-amount').value); if(name&&!isNaN(amount)){ if(window.isRecEditMode&&window.recEditId) await updateDoc(doc(db,"users",window.activeUid,"recurring",window.recEditId),{name,amount}); else await addDoc(collection(db,"users",window.activeUid,"recurring"),{name,amount}); if(window.cancelRecEdit) window.cancelRecEdit(); } else window.customAlert("Please enter a valid Name and Amount."); };
 
 // Auto Recurring System
