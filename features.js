@@ -184,8 +184,8 @@ window.exportAdvancedPDF = () => {
                 tr { page-break-inside: avoid; }
             }
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1d1d1f; margin: 0; padding: 20px; background: #ffffff; }
-            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #ff9f0a; padding-bottom: 15px; }
-            .header h1 { margin: 0; font-size: 24px; color: #ff9f0a; font-weight: 800; text-transform: uppercase; }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #7C6BB0; padding-bottom: 15px; }
+            .header h1 { margin: 0; font-size: 24px; color: #7C6BB0; font-weight: 800; text-transform: uppercase; }
             .header p { margin: 5px 0 0 0; color: #666; font-size: 14px; }
             .summary-box { display: flex; justify-content: space-between; background: #f2f2f7; padding: 15px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #e5e5ea; }
             .summary-item { text-align: center; flex: 1; }
