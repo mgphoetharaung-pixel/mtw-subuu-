@@ -10,6 +10,8 @@ window.globalDebts = window.globalDebts || [];
 window.globalCurrencies = window.globalCurrencies || [];
 
 window.myPieChart = null;
+window.ioBarChart = null;
+window.catTrendChart = null;
 window.currentSelectedType = 'Expense';
 window.currentChartType = 'Expense';
 window.currentReportView = 'Monthly';
@@ -142,12 +144,12 @@ window.closeCustomModal = () => {
 };
 
 window.showProPaymentDialog = () => { 
-    window.customAlert(`<div style="text-align:center;"><div style="background: linear-gradient(135deg, #ffcc00, #ff9500); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px auto; box-shadow: 0 10px 20px rgba(255,159,10,0.3);"><i class="fa-solid fa-crown" style="font-size:40px; color:white;"></i></div><h3 style="font-weight: 800; color: var(--text-color); margin-bottom: 5px;">Premium Access</h3><p style="font-size:14px; color:var(--secondary-text); margin-bottom:20px;">Upgrade to PRO to unlock this feature.</p><div class="glass-panel" style="padding:15px; border-radius:16px; text-align:left;"><p style="margin-bottom:12px; font-size:14px; display: flex; align-items: center; color: var(--text-color);"><i class="fa-brands fa-viber" style="color:#7360f2; font-size: 18px; width: 30px; text-align: center;"></i> <b style="margin-right: 5px;">Viber:</b> 09 777 49 777 6</p><p style="font-size:22px; font-weight:800; color:var(--primary-color); text-align:center; margin: 5px 0; letter-spacing: 1px;">09777497776</p><p style="font-size:12px; text-align:center; color:var(--secondary-text); font-weight: 600;">👤 U Aung Htwe Naing</p></div></div>`, ""); 
+    window.customAlert(`<div style="text-align:center;"><div style="background: linear-gradient(135deg, #B8A9E8, #7C6BB0); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px auto; box-shadow: 0 10px 20px rgba(124,107,176,0.3);"><i class="fa-solid fa-crown" style="font-size:40px; color:white;"></i></div><h3 style="font-weight: 800; color: var(--text-color); margin-bottom: 5px;">Premium Access</h3><p style="font-size:14px; color:var(--secondary-text); margin-bottom:20px;">Upgrade to PRO to unlock this feature.</p><div class="glass-panel" style="padding:15px; border-radius:16px; text-align:left;"><p style="margin-bottom:12px; font-size:14px; display: flex; align-items: center; color: var(--text-color);"><i class="fa-brands fa-viber" style="color:#7360f2; font-size: 18px; width: 30px; text-align: center;"></i> <b style="margin-right: 5px;">Viber:</b> 09 777 49 777 6</p><p style="font-size:22px; font-weight:800; color:var(--primary-color); text-align:center; margin: 5px 0; letter-spacing: 1px;">09777497776</p><p style="font-size:12px; text-align:center; color:var(--secondary-text); font-weight: 600;">👤 U Aung Htwe Naing</p></div></div>`, ""); 
 };
 
 window.showAbout = () => { 
     window.customAlert(`<div style="text-align:center;">
-        <div style="background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px auto; box-shadow: 0 10px 20px rgba(255,159,10,0.3);">
+        <div style="background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px auto; box-shadow: 0 10px 20px rgba(124,107,176,0.3);">
             <i class="fa-solid fa-piggy-bank" style="font-size:40px; color:white;"></i>
         </div>
         <h3 style="font-weight: 800; color: var(--text-color); margin-bottom: 5px;">MTW SUBUU Pro Max</h3>
@@ -264,6 +266,16 @@ window.setAppThemeColor = (color) => {
     }; 
     
     document.documentElement.style.setProperty('--primary-dark', shadeColor(color, -20)); 
+    
+    // 🌟 Rebuild gradient + glow from the picked color (so old orange glows don't linger)
+    const lightShade = shadeColor(color, 30); 
+    document.documentElement.style.setProperty('--primary-gradient', `linear-gradient(135deg, ${lightShade} 0%, ${color} 100%)`); 
+    const hexToRgba = (hex, alpha) => { 
+        const r = parseInt(hex.substring(1,3),16), g = parseInt(hex.substring(3,5),16), b = parseInt(hex.substring(5,7),16); 
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`; 
+    }; 
+    document.documentElement.style.setProperty('--primary-shadow', 
+        `0 8px 20px ${hexToRgba(color, 0.35)}, inset 0 2px 3px rgba(255, 255, 255, 0.4), inset 0 -3px 5px rgba(0, 0, 0, 0.15)`); 
     
     const meta = document.getElementById('meta-theme-color'); 
     if(meta) meta.setAttribute('content', color); 
@@ -407,6 +419,9 @@ window.toggleAccordion = (contentId, headerEl) => {
     if (content.style.display === 'none') { 
         content.style.display = 'block'; 
         if(icon) icon.classList.replace('fa-chevron-down','fa-chevron-up'); 
+        // Chart.js cannot measure a hidden container — re-render on open
+        if(contentId === 'io-bar-content' && window.renderIOBarChart) window.renderIOBarChart();
+        if(contentId === 'cat-trend-content' && window.renderCatTrendChart) window.renderCatTrendChart();
     } else { 
         content.style.display = 'none'; 
         if(icon) icon.classList.replace('fa-chevron-up','fa-chevron-down'); 
@@ -427,8 +442,8 @@ window.switchTab = (tab, el) => {
     const fab = document.getElementById('main-fab'); 
     if(fab) fab.style.display = (tab === 'home') ? 'flex' : 'none'; 
     
-    if(tab === 'report' && window.renderChart) {
-        window.renderChart(); 
+    if(tab === 'report' && window.renderReport) {
+        window.renderReport(); 
     }
 };
 
@@ -467,13 +482,19 @@ window.toggleTheme = () => {
             text.innerText = 'Dark'; 
         } else { 
             icon.className = 'fa-solid fa-sun input-icon-inline'; 
-            icon.style.backgroundColor = '#ff9f0a'; 
+            icon.style.backgroundColor = '#7C6BB0'; 
             text.innerText = 'Light'; 
         } 
     } 
     
     if(window.renderChart) {
         window.renderChart(); 
+    }
+    if(window.renderIOBarChart) {
+        window.renderIOBarChart(); 
+    }
+    if(window.renderCatTrendChart) {
+        window.renderCatTrendChart(); 
     }
 };
 
@@ -617,7 +638,7 @@ window.renderChart = (forceLight = false) => {
             window.myPieChart.destroy();
         }
         
-        const themeColor = localStorage.getItem('mtw_theme_color') || '#ff9f0a';
+        const themeColor = localStorage.getItem('mtw_theme_color') || '#7C6BB0';
         const isDark = !forceLight && document.body.classList.contains('dark-mode');
         const bgColors = data.map((_, i) => { return `hsl(${(i * 50) % 360}, 70%, 50%)`; });
         
@@ -659,6 +680,276 @@ window.renderChart = (forceLight = false) => {
 
 setTimeout(() => { if(window.renderChart) window.renderChart(); }, 800);
 
+setTimeout(() => { if(window.renderChart) window.renderChart(); }, 800);
+
+// ==========================================
+// 📊 Report Analytics Dashboard (insights · IO bars · category trends · CSV)
+// ==========================================
+const rptParseAmt = (t) => Number(String(t.amount).replace(/,/g, '')) || 0;
+
+const rptMonthKey = (baseMonth, offset) => {
+    let parts = baseMonth.split('-'); 
+    let y = parseInt(parts[0], 10), m = parseInt(parts[1], 10) - offset;
+    while (m < 1) { m += 12; y -= 1; }
+    return `${y}-${String(m).padStart(2, '0')}`;
+};
+
+const rptInMonth = (t, mk) => t.month === mk || (t.timestamp && String(t.timestamp).startsWith(mk));
+
+const rptMonthNames = (isMM) => isMM
+    ? ['ဇန်','ဖေ','မတ်','ဧ','မေ','ဇွန်','ဇူ','ဩ','စက်','အောက်','နို','ဒီ']
+    : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+const rptAxisColors = () => {
+    const isDark = document.body.classList.contains('dark-mode');
+    return {
+        grid: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+        tick: isDark ? '#ebebf5' : '#3a3a3c'
+    };
+};
+
+// --- 1 · Spending insights cards (top of report tab) ---
+window.renderInsights = () => {
+    try {
+        const c = document.getElementById('insights-container'); 
+        if(!c) return;
+        
+        const isMM = localStorage.getItem('mtw_lang') === 'mm';
+        const month = document.getElementById('report-month')?.value;
+        if(!month) { c.innerHTML = ''; return; }
+        
+        const prevMonth = rptMonthKey(month, 1);
+        let exp = 0, inc = 0, prevExp = 0;
+        const catTotals = {};
+        let biggest = null;
+        
+        (window.globalTransactions || []).forEach(t => {
+            const amt = rptParseAmt(t);
+            if (rptInMonth(t, month)) {
+                if (t.type === 'Expense') {
+                    exp += amt;
+                    const cat = t.category || 'Other';
+                    catTotals[cat] = (catTotals[cat] || 0) + amt;
+                    if (!biggest || amt > biggest.amt) biggest = { amt, cat, note: t.note || '' };
+                } else if (t.type === 'Income') {
+                    inc += amt;
+                }
+            } else if (t.type === 'Expense' && rptInMonth(t, prevMonth)) {
+                prevExp += amt;
+            }
+        });
+        
+        let momTxt = '—', momColor = 'var(--secondary-text)';
+        if (prevExp > 0) {
+            const pct = ((exp - prevExp) / prevExp) * 100;
+            momTxt = (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%';
+            momColor = pct <= 0 ? '#34c759' : '#ff3b30';
+        } else if (exp > 0) {
+            momTxt = isMM ? 'အသစ်' : 'New';
+            momColor = '#7C6BB0';
+        }
+        
+        const sortedCats = Object.keys(catTotals).sort((a, b) => catTotals[b] - catTotals[a]);
+        const topCat = sortedCats.length ? sortedCats[0] : '—';
+        const topShare = (sortedCats.length && exp > 0) ? ((catTotals[sortedCats[0]] / exp) * 100).toFixed(0) + '%' : '';
+        
+        const parts = month.split('-');
+        const daysInMonth = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10), 0).getDate();
+        const avgDaily = exp / daysInMonth;
+        
+        let saveTxt = '—', saveSub = '', saveColor = 'var(--text-color)';
+        if (inc > 0) {
+            const sr = ((inc - exp) / inc) * 100;
+            saveTxt = sr.toFixed(0) + '%';
+            saveColor = sr >= 20 ? '#34c759' : '#ff9f0a';
+            if (sr < 20) saveSub = isMM ? '💡 20% အောက် — နည်းနည်းစုကြည့်ပါ' : '💡 Below 20% — try saving a bit more';
+        }
+        
+        const card = (label, value, sub, color) => `
+            <div class="glass-panel" style="border-radius: 18px; padding: 12px 8px; text-align: center;">
+                <div style="font-size: 10px; font-weight: 800; color: var(--secondary-text); margin-bottom: 4px;">${label}</div>
+                <div style="font-size: 16px; font-weight: 800; color: ${color || 'var(--text-color)'}; word-break: break-word;">${value}</div>
+                ${sub ? `<div style="font-size: 10px; color: var(--secondary-text); margin-top: 3px;">${sub}</div>` : ''}
+            </div>`;
+        
+        c.innerHTML = `<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+            ${card(isMM ? 'လအလိုက် ပြောင်းလဲမှု' : 'MoM Change', momTxt, isMM ? 'အရင်လနဲ့ ယှဉ်' : 'vs last month', momColor)}
+            ${card(isMM ? 'အများဆုံး ကဏ္ဍ' : 'Top Category', topCat, topShare ? topShare + (isMM ? ' သုံးငွေ' : ' of expenses') : '', '#7C6BB0')}
+            ${card(isMM ? 'ပျမ်းမျှ နေ့စဉ်သုံး' : 'Avg Daily Spend', Math.round(avgDaily).toLocaleString() + ' Ks')}
+            ${card(isMM ? 'စုဆောင်းနိုင်မှု' : 'Savings Rate', saveTxt, saveSub, saveColor)}
+            <div style="grid-column: span 2;">${card(isMM ? 'အကြီးဆုံး တစ်ကြိမ်သုံး' : 'Biggest Expense', biggest ? biggest.amt.toLocaleString() + ' Ks' : '—', biggest ? biggest.cat + (biggest.note ? ' · ' + biggest.note : '') : '', '#ff3b30')}</div>
+        </div>`;
+    } catch(e) {
+        console.error(e);
+    }
+};
+
+// --- 2 · Income vs Expense bar chart (last 6 months) ---
+window.renderIOBarChart = () => {
+    try {
+        const canvas = document.getElementById('ioBarChart'); 
+        if(!canvas || typeof Chart === 'undefined') return;
+        
+        const isMM = localStorage.getItem('mtw_lang') === 'mm';
+        const base = document.getElementById('report-month')?.value;
+        if(!base) return;
+        
+        const mNames = rptMonthNames(isMM);
+        const labels = [], incData = [], expData = [];
+        
+        for (let i = 5; i >= 0; i--) {
+            const mk = rptMonthKey(base, i);
+            labels.push(mNames[parseInt(mk.split('-')[1], 10) - 1]);
+            let inc = 0, exp = 0;
+            (window.globalTransactions || []).forEach(t => {
+                if (!rptInMonth(t, mk)) return;
+                const amt = rptParseAmt(t);
+                if (t.type === 'Income') inc += amt;
+                else if (t.type === 'Expense') exp += amt;
+            });
+            incData.push(inc);
+            expData.push(exp);
+        }
+        
+        if (window.ioBarChart) {
+            window.ioBarChart.destroy();
+        }
+        
+        const ac = rptAxisColors();
+        window.ioBarChart = new Chart(canvas, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: isMM ? 'ဝင်ငွေ' : 'Income', data: incData, backgroundColor: 'rgba(52,199,89,0.85)', borderRadius: 6, borderSkipped: false },
+                    { label: isMM ? 'ထွက်ငွေ' : 'Expense', data: expData, backgroundColor: 'rgba(255,59,48,0.75)', borderRadius: 6, borderSkipped: false }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: ac.tick, boxWidth: 12, font: { size: 11 } } }
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: ac.tick, font: { size: 10 } } },
+                    y: { grid: { color: ac.grid }, ticks: { color: ac.tick, font: { size: 10 }, callback: (v) => v >= 1000 ? (v/1000) + 'k' : v } }
+                }
+            }
+        });
+    } catch(e) {
+        console.error(e);
+    }
+};
+
+// --- 3 · Category trend lines (top 5 expense categories, last 6 months) ---
+window.renderCatTrendChart = () => {
+    try {
+        const canvas = document.getElementById('catTrendChart'); 
+        if(!canvas || typeof Chart === 'undefined') return;
+        
+        const isMM = localStorage.getItem('mtw_lang') === 'mm';
+        const base = document.getElementById('report-month')?.value;
+        if(!base) return;
+        
+        const mNames = rptMonthNames(isMM);
+        const months = [];
+        for (let i = 5; i >= 0; i--) months.push(rptMonthKey(base, i));
+        
+        const totals = {};
+        (window.globalTransactions || []).forEach(t => {
+            if (t.type !== 'Expense') return;
+            const tm = t.month || String(t.timestamp || '').substring(0, 7);
+            if (!months.includes(tm)) return;
+            const cat = t.category || 'Other';
+            totals[cat] = (totals[cat] || 0) + rptParseAmt(t);
+        });
+        
+        const topCats = Object.keys(totals).sort((a, b) => totals[b] - totals[a]).slice(0, 5);
+        const palette = ['#7C6BB0', '#B39DDB', '#34c759', '#ff9f0a', '#0a84ff'];
+        
+        const datasets = topCats.map((cat, i) => ({
+            label: cat,
+            data: months.map(mk => {
+                let s = 0;
+                (window.globalTransactions || []).forEach(t => {
+                    if (t.type === 'Expense' && (t.category || 'Other') === cat && rptInMonth(t, mk)) s += rptParseAmt(t);
+                });
+                return s;
+            }),
+            borderColor: palette[i % palette.length],
+            backgroundColor: palette[i % palette.length] + '22',
+            tension: 0.35,
+            borderWidth: 2,
+            pointRadius: 3,
+            fill: false
+        }));
+        
+        if (window.catTrendChart) {
+            window.catTrendChart.destroy();
+        }
+        
+        const ac = rptAxisColors();
+        window.catTrendChart = new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: months.map(mk => mNames[parseInt(mk.split('-')[1], 10) - 1]),
+                datasets: datasets.length ? datasets : [{ label: isMM ? 'ဒေတာ မရှိသေးပါ' : 'No Data', data: months.map(() => 0), borderColor: '#c7c7cc' }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: ac.tick, boxWidth: 12, font: { size: 10 } } }
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: ac.tick, font: { size: 10 } } },
+                    y: { beginAtZero: true, grid: { color: ac.grid }, ticks: { color: ac.tick, font: { size: 10 }, callback: (v) => v >= 1000 ? (v/1000) + 'k' : v } }
+                }
+            }
+        });
+    } catch(e) {
+        console.error(e);
+    }
+};
+
+// --- 5 · Export this month's transactions as CSV ---
+window.exportMonthCSV = () => {
+    try {
+        window.haptic();
+        const isMM = localStorage.getItem('mtw_lang') === 'mm';
+        const month = document.getElementById('report-month')?.value;
+        if(!month) return;
+        
+        const rows = (window.globalTransactions || []).filter(t => rptInMonth(t, month));
+        if (!rows.length) return window.customAlert(isMM ? 'ဒီလအတွက် စာရင်း မရှိသေးပါ။' : 'No transactions this month.');
+        
+        const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+        const lines = [[ 'ရက်စွဲ', 'အမျိုးအစား', 'ကဏ္ဍ', 'အကောင့်', 'ပမာဏ (Ks)', 'မှတ်ချက်' ].map(q).join(',')];
+        
+        rows.forEach(t => {
+            lines.push([
+                (t.timestamp || '').substring(0, 10),
+                t.type || '',
+                t.category || t.toAccount || '',
+                t.account || '',
+                String(t.amount || '').replace(/,/g, ''),
+                t.note || ''
+            ].map(q).join(','));
+        });
+        
+        const blob = new Blob(["﻿" + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `MTW_SUBUU_${month}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+    } catch(e) {
+        console.error(e);
+    }
+};
+
 window.renderReport = () => {
     try {
         window.initReportDates(); 
@@ -696,6 +987,12 @@ window.renderReport = () => {
         if(re) re.innerText = expense.toLocaleString() + " MMK";
         
         window.renderChart();
+        
+        // 📊 Analytics dashboard sections
+        if(window.renderInsights) window.renderInsights();
+        if(window.renderIOBarChart) window.renderIOBarChart();
+        if(window.renderCatTrendChart) window.renderCatTrendChart();
+        if(window.updateBudgetProgress) window.updateBudgetProgress();
         
         const searchTx = document.getElementById('search-tx'); 
         const searchQuery = searchTx ? searchTx.value.toLowerCase().trim() : '';
@@ -895,11 +1192,72 @@ window.updateCurrencyManagerList = () => {
     }
 };
 
+window.debtFormType = window.debtFormType || 'lend';
+
+window.setDebtFormType = (t) => { 
+    window.debtFormType = t === 'borrow' ? 'borrow' : 'lend'; 
+    const l = document.getElementById('debt-type-lend'), b = document.getElementById('debt-type-borrow'); 
+    if(l) l.classList.toggle('active', window.debtFormType === 'lend'); 
+    if(b) b.classList.toggle('active', window.debtFormType === 'borrow'); 
+};
+
+window.debtRemaining = (d) => Math.max(0, (Number(d.amount) || 0) - (Number(d.paidAmount) || 0));
+window.debtIsOpen = (d) => (d.status || 'open') === 'open';
+window.debtDaysUntil = (d) => { 
+    if(!d.dueDate) return 99999; 
+    const due = new Date(String(d.dueDate) + 'T00:00:00'); 
+    if(isNaN(due)) return 99999; 
+    const today = new Date(); today.setHours(0, 0, 0, 0); 
+    return Math.round((due - today) / 86400000); 
+};
+
 window.updateDebtsManagerList = () => { 
     const list = document.getElementById('debts-manager-list'); 
-    if(list) {
-        list.innerHTML = window.globalDebts.map(d => `<div class="acc-list-item glass-panel"><span>${d.name||'Unknown'}: ${(d.amount||0).toLocaleString()}</span><div><i class="fa-solid fa-pen-to-square text-blue" style="cursor:pointer; margin-right: 15px;" onclick="editDebt('${d.id}')"></i><i class="fa-solid fa-trash text-red" style="cursor:pointer;" onclick="deleteRecord('debts', '${d.id}')"></i></div></div>`).join(''); 
-    }
+    if(!list) return; 
+    const isMM = localStorage.getItem('mtw_lang') === 'mm'; 
+    const debts = (window.globalDebts || []).slice(); 
+    debts.sort((a, b) => { 
+        const ao = window.debtIsOpen(a) ? 0 : 1, bo = window.debtIsOpen(b) ? 0 : 1; 
+        if(ao !== bo) return ao - bo; 
+        return window.debtDaysUntil(a) - window.debtDaysUntil(b); 
+    }); 
+    const sumEl = document.getElementById('debt-summary'); 
+    if(sumEl) { 
+        let lentOut = 0, borrowedOut = 0; 
+        debts.forEach(d => { 
+            if(!window.debtIsOpen(d)) return; 
+            if((d.type || 'lend') === 'borrow') borrowedOut += window.debtRemaining(d); 
+            else lentOut += window.debtRemaining(d); 
+        }); 
+        sumEl.innerHTML = `<div class="glass-panel" style="display:flex; gap:8px; padding:10px 12px; border-radius:14px;"><div style="flex:1; text-align:center;"><div style="font-size:11px; opacity:.7; font-weight:700;">${isMM ? '🤝 ချေးပေးထားတာ ကျန်' : '🤝 Lent Out'}</div><div style="font-size:16px; font-weight:800; color:#28cd41;">${lentOut.toLocaleString()} Ks</div></div><div style="flex:1; text-align:center;"><div style="font-size:11px; opacity:.7; font-weight:700;">${isMM ? '🙏 ချေးယူထားတာ ကျန်' : '🙏 Borrowed'}</div><div style="font-size:16px; font-weight:800; color:#ff9f0a;">${borrowedOut.toLocaleString()} Ks</div></div></div>`; 
+    } 
+    if(!debts.length) { 
+        list.innerHTML = `<div style="text-align:center; padding:20px; color:var(--secondary-text); font-size:14px;">${isMM ? '🤝 အကြွေး စာရင်း မရှိသေးပါ' : '🤝 No debts recorded yet'}</div>`; 
+        return; 
+    } 
+    list.innerHTML = debts.map(d => { 
+        const total = Number(d.amount) || 0, paid = Number(d.paidAmount) || 0; 
+        const remain = window.debtRemaining(d); 
+        const pct = total > 0 ? Math.min(100, Math.round(paid / total * 100)) : 0; 
+        const type = (d.type || 'lend') === 'borrow' ? 'borrow' : 'lend'; 
+        const settled = !window.debtIsOpen(d); 
+        const days = window.debtDaysUntil(d); 
+        const dueStr = d.dueDate ? String(d.dueDate).substring(0, 10) : ''; 
+        let dueHtml = ''; 
+        if(dueStr && !settled) { 
+            if(days < 0) dueHtml = `<div style="font-size:12px; font-weight:700; color:#ff453a; margin-top:4px;">⚠️ ${isMM ? 'ရက်ကျော်နေပြီ' : 'Overdue'} · ${dueStr}</div>`; 
+            else if(days <= 7) dueHtml = `<div style="font-size:12px; font-weight:700; color:#ff9f0a; margin-top:4px;">⏳ ${isMM ? days + ' ရက် လိုသေးတယ်' : days + 'd left'} · ${dueStr}</div>`; 
+            else dueHtml = `<div style="font-size:12px; opacity:.65; margin-top:4px;">📅 ${dueStr}</div>`; 
+        } 
+        const badgeBg = type === 'borrow' ? 'rgba(255,159,10,0.15)' : 'rgba(52,199,89,0.15)'; 
+        const badgeColor = type === 'borrow' ? '#ff9f0a' : '#28cd41'; 
+        const badgeText = type === 'borrow' ? (isMM ? 'ချေးယူထားတယ်' : 'Borrowed') : (isMM ? 'ချေးပေးထားတယ်' : 'Lent Out'); 
+        const safeName = String(d.name || 'Unknown').replace(/</g, '&lt;').replace(/>/g, '&gt;'); 
+        const safeNotes = String(d.notes || '').replace(/</g, '&lt;').replace(/>/g, '&gt;'); 
+        const payBtn = settled ? '' : `<button onclick="recordDebtPayment('${d.id}')" class="glass-panel" style="flex:1; padding:8px; font-size:12px; font-weight:700; color:var(--text-color); border:none; cursor:pointer;">💰 ${isMM ? 'ငွေသွင်းမှတ်မယ်' : 'Record Payment'}</button>`; 
+        const settleBtn = `<button onclick="toggleDebtSettled('${d.id}')" class="glass-panel" style="flex:1; padding:8px; font-size:12px; font-weight:700; color:${settled ? 'var(--secondary-text)' : '#28cd41'}; border:none; cursor:pointer;">${settled ? (isMM ? '↩️ ပြန်ဖွင့်မယ်' : '↩️ Reopen') : '✅ ' + (isMM ? 'ဆပ်ပြီးပြီ' : 'Settled')}</button>`; 
+        return `<div class="glass-panel" style="padding:12px; border-radius:16px; margin-bottom:10px; ${settled ? 'opacity:.65;' : ''}"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><span style="font-weight:800; font-size:15px; color:var(--text-color);">${safeName}</span><span style="font-size:11px; font-weight:800; padding:3px 10px; border-radius:100px; background:${badgeBg}; color:${badgeColor};">${badgeText}</span></div><div style="display:flex; justify-content:space-between; align-items:baseline; font-size:13px; color:var(--secondary-text); margin-bottom:6px;"><span>${isMM ? 'ကျန်' : 'Remaining'}: <b style="color:var(--text-color); font-size:15px;">${remain.toLocaleString()} Ks</b></span><span>${paid.toLocaleString()} / ${total.toLocaleString()} Ks</span></div><div style="height:8px; border-radius:100px; background:var(--input-bg); box-shadow:var(--inner-shadow-track); overflow:hidden; margin-bottom:4px;"><div style="height:100%; width:${pct}%; border-radius:100px; background:linear-gradient(90deg, ${type === 'borrow' ? '#ff9f0a, #ff7a00' : '#32d74b, #28cd41'}); transition:width .3s;"></div></div>${dueHtml}${safeNotes ? `<div style="font-size:12px; opacity:.65; margin-top:4px;">📝 ${safeNotes}</div>` : ''}<div style="display:flex; gap:8px; margin-top:8px;">${payBtn}${settleBtn}<i class="fa-solid fa-pen-to-square" style="cursor:pointer; color:#0a84ff; align-self:center; padding:4px;" onclick="editDebt('${d.id}')"></i><i class="fa-solid fa-trash" style="cursor:pointer; color:#ff453a; align-self:center; padding:4px;" onclick="deleteRecord('debts', '${d.id}')"></i></div></div>`; 
+    }).join(''); 
 };
 
 window.updateRecurringManagerList = () => { 
@@ -960,10 +1318,10 @@ window.closeCurrenciesManager = () => { const m = document.getElementById('curre
 window.editCurrency = (id) => { const c = window.globalCurrencies.find(x => x.id === id); if(!c) return; window.isCurEditMode = true; window.curEditId = id; const cd = document.getElementById('curr-code'); if(cd) cd.value = c.code || ''; const r = document.getElementById('curr-rate'); if(r) r.value = c.rate || ''; const btns = window.setupEditButtons('currency-manager-modal', 'addCurrency', 'cur', window.cancelCurEdit); if(btns.saveBtn) btns.saveBtn.innerText = "Update"; if(btns.cancelBtn) btns.cancelBtn.style.display = 'block'; }; 
 window.cancelCurEdit = () => { window.isCurEditMode = false; window.curEditId = null; const cd = document.getElementById('curr-code'); if(cd) cd.value = ''; const r = document.getElementById('curr-rate'); if(r) r.value = ''; const btns = window.setupEditButtons('currency-manager-modal', 'addCurrency', 'cur', window.cancelCurEdit); if(btns.saveBtn) btns.saveBtn.innerText = "Add Currency"; if(btns.cancelBtn) btns.cancelBtn.style.display = 'none'; };
 
-window.openDebtsManager = () => { const m = document.getElementById('debts-manager-modal'); if(m) m.style.display='flex'; window.updateDebtsManagerList(); }; 
+window.openDebtsManager = () => { const m = document.getElementById('debts-manager-modal'); if(m) m.style.display='flex'; window.cancelDebtEdit(); window.updateDebtsManagerList(); }; 
 window.closeDebtsManager = () => { const m = document.getElementById('debts-manager-modal'); if(m) m.style.display='none'; window.cancelDebtEdit(); }; 
-window.editDebt = (id) => { const d = window.globalDebts.find(x => x.id === id); if(!d) return; window.isDebtEditMode = true; window.debtEditId = id; const n = document.getElementById('debt-name'); if(n) n.value = d.name || ''; const a = document.getElementById('debt-amount'); if(a) a.value = d.amount || ''; const btns = window.setupEditButtons('debts-manager-modal', 'addDebt', 'debt', window.cancelDebtEdit); if(btns.saveBtn) btns.saveBtn.innerText = "Update"; if(btns.cancelBtn) btns.cancelBtn.style.display = 'block'; }; 
-window.cancelDebtEdit = () => { window.isDebtEditMode = false; window.debtEditId = null; const n = document.getElementById('debt-name'); if(n) n.value = ''; const a = document.getElementById('debt-amount'); if(a) a.value = ''; const btns = window.setupEditButtons('debts-manager-modal', 'addDebt', 'debt', window.cancelDebtEdit); if(btns.saveBtn) btns.saveBtn.innerText = "Add Debt"; if(btns.cancelBtn) btns.cancelBtn.style.display = 'none'; };
+window.editDebt = (id) => { const d = window.globalDebts.find(x => x.id === id); if(!d) return; if(window.isViewingPartner && window.isViewingPartner()) return window.readOnlyAlert(); window.isDebtEditMode = true; window.debtEditId = id; const n = document.getElementById('debt-name'); if(n) n.value = d.name || ''; const a = document.getElementById('debt-amount'); if(a) a.value = d.amount || ''; const p = document.getElementById('debt-paid'); if(p) p.value = d.paidAmount || ''; const dd = document.getElementById('debt-due'); if(dd) dd.value = String(d.dueDate || '').substring(0, 10); const nt = document.getElementById('debt-notes'); if(nt) nt.value = d.notes || ''; window.setDebtFormType((d.type || 'lend') === 'borrow' ? 'borrow' : 'lend'); const btns = window.setupEditButtons('debts-manager-modal', 'addDebt', 'debt', window.cancelDebtEdit); if(btns.saveBtn) btns.saveBtn.innerText = "Update"; if(btns.cancelBtn) btns.cancelBtn.style.display = 'block'; }; 
+window.cancelDebtEdit = () => { window.isDebtEditMode = false; window.debtEditId = null; const n = document.getElementById('debt-name'); if(n) n.value = ''; const a = document.getElementById('debt-amount'); if(a) a.value = ''; const p = document.getElementById('debt-paid'); if(p) p.value = ''; const dd = document.getElementById('debt-due'); if(dd) dd.value = ''; const nt = document.getElementById('debt-notes'); if(nt) nt.value = ''; window.setDebtFormType('lend'); const btns = window.setupEditButtons('debts-manager-modal', 'addDebt', 'debt', window.cancelDebtEdit); if(btns.saveBtn) btns.saveBtn.innerText = "Add Debt"; if(btns.cancelBtn) btns.cancelBtn.style.display = 'none'; };
 
 window.openRecurringManager = () => { const m = document.getElementById('recurring-manager-modal'); if(m) m.style.display='flex'; window.updateRecurringManagerList(); }; 
 window.closeRecurringManager = () => { const m = document.getElementById('recurring-manager-modal'); if(m) m.style.display='none'; window.cancelRecEdit(); }; 
@@ -1151,6 +1509,9 @@ window.applyLanguage = (lang) => {
         
         const ab = document.getElementById('lbl-acc-bals'); if(ab) ab.innerText = 'အကောင့်လက်ကျန်များ'; 
         const bu = document.getElementById('lbl-budget-usage'); if(bu) bu.innerText = 'ဘတ်ဂျက်သုံးစွဲမှု';
+        const ecsv = document.getElementById('lbl-export-csv'); if(ecsv) ecsv.innerText = 'ဒီလ CSV ထုတ်မည်'; 
+        const lio = document.getElementById('lbl-io-chart'); if(lio) lio.innerText = 'ဝင်ငွေ vs ထွက်ငွေ · ၆ လ'; 
+        const lct = document.getElementById('lbl-cat-trend'); if(lct) lct.innerText = 'ကဏ္ဍလမ်းကြောင်း · ၆ လ';
         
         const tcl = document.getElementById('lbl-theme-color'); if(tcl) tcl.innerText = 'အရောင်ပြောင်းရန်'; 
         const yl = document.getElementById('lbl-yearly'); if(yl) yl.innerText = 'နှစ်စဉ်'; 
@@ -1199,6 +1560,8 @@ window.applyLanguage = (lang) => {
         const mdcu = document.getElementById('lbl-mdl-cur'); if(mdcu) mdcu.innerText = 'ငွေကြေးအမျိုးအစား စီမံရန်'; 
         const mdr = document.getElementById('lbl-mdl-rec'); if(mdr) mdr.innerText = 'လစဉ်ပုံမှန် စီမံရန်'; 
         const mdd = document.getElementById('lbl-mdl-debt'); if(mdd) mdd.innerText = 'အကြွေးများ စီမံရန်'; 
+        const dtl = document.getElementById('lbl-debt-type-lend'); if(dtl) dtl.innerText = 'ချေးပေးထားတယ်'; 
+        const dtb = document.getElementById('lbl-debt-type-borrow'); if(dtb) dtb.innerText = 'ချေးယူထားတယ်'; 
         
         const cc = document.getElementById('lbl-choose-color'); if(cc) cc.innerText = 'အဓိကအရောင် ရွေးချယ်ရန်';
         const subTitle = document.getElementById('sub-title'); if (subTitle && !window.isProUser()) subTitle.innerText = "Pro သို့ အဆင့်မြှင့်ရန်";
@@ -1221,6 +1584,9 @@ window.applyLanguage = (lang) => {
         
         const ab = document.getElementById('lbl-acc-bals'); if(ab) ab.innerText = 'Account Balances'; 
         const bu = document.getElementById('lbl-budget-usage'); if(bu) bu.innerText = 'Budget Usage';
+        const ecsv = document.getElementById('lbl-export-csv'); if(ecsv) ecsv.innerText = 'Export this month (CSV)'; 
+        const lio = document.getElementById('lbl-io-chart'); if(lio) lio.innerText = 'Income vs Expense · 6 months'; 
+        const lct = document.getElementById('lbl-cat-trend'); if(lct) lct.innerText = 'Category Trends · 6 months';
         
         const tcl = document.getElementById('lbl-theme-color'); if(tcl) tcl.innerText = 'Theme Color'; 
         const yl = document.getElementById('lbl-yearly'); if(yl) yl.innerText = 'Yearly'; 
@@ -1269,6 +1635,8 @@ window.applyLanguage = (lang) => {
         const mdcu = document.getElementById('lbl-mdl-cur'); if(mdcu) mdcu.innerText = 'Manage Currencies'; 
         const mdr = document.getElementById('lbl-mdl-rec'); if(mdr) mdr.innerText = 'Manage Recurring'; 
         const mdd = document.getElementById('lbl-mdl-debt'); if(mdd) mdd.innerText = 'Manage Debts'; 
+        const dtl = document.getElementById('lbl-debt-type-lend'); if(dtl) dtl.innerText = 'Lent Out'; 
+        const dtb = document.getElementById('lbl-debt-type-borrow'); if(dtb) dtb.innerText = 'Borrowed'; 
         
         const cc = document.getElementById('lbl-choose-color'); if(cc) cc.innerText = 'Choose Accent Color';
         const subTitle = document.getElementById('sub-title'); if (subTitle && !window.isProUser()) subTitle.innerText = "Upgrade to Pro";
