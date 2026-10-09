@@ -16,23 +16,23 @@
     .a-topbar h2{margin:0;font-size:17px;font-weight:900;color:var(--text-color,#111);}
     .a-tabs{display:flex;gap:6px;margin-bottom:16px;padding:6px;border-radius:16px;}
     .a-tab{flex:1;text-align:center;padding:11px 8px;border-radius:12px;font-weight:800;font-size:14px;cursor:pointer;background:transparent;color:var(--secondary-text,#666);}
-    .a-tab.active{background:var(--primary-color,#ff9f0a);color:#fff;box-shadow:0 4px 14px rgba(255,159,10,.35);}
+    .a-tab.active{background:var(--primary-color,#7C6BB0);color:#fff;box-shadow:0 4px 14px rgba(124,107,176,.35);}
     .a-badge{display:inline-block;min-width:20px;padding:1px 6px;border-radius:999px;background:#ff3b30;color:#fff;font-size:11px;margin-left:4px;}
     .card-list{display:flex;flex-direction:column;gap:12px;}
     .pay-card{padding:16px;border-radius:16px;}
     .chip{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.5px;}
-    .chip.pending{background:rgba(255,159,10,.15);color:#ff9f0a;}
+    .chip.pending{background:rgba(124,107,176,.15);color:#7C6BB0;}
     .chip.approved{background:rgba(52,199,89,.15);color:#34c759;}
     .chip.rejected{background:rgba(255,59,48,.15);color:#ff3b30;}
     .chip.cancelled{background:rgba(142,142,147,.2);color:#8e8e93;}
-    .chip.pro{background:rgba(255,159,10,.15);color:#ff9f0a;}
+    .chip.pro{background:rgba(124,107,176,.15);color:#7C6BB0;}
     .chip.free{background:rgba(52,199,89,.15);color:#34c759;}
     .pay-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;}
     .kv{font-size:13px;color:var(--text-color,#111);margin-top:6px;word-break:break-all;}
     .kv b{color:var(--secondary-text,#666);font-weight:700;}
-    .proof-thumb{width:74px;height:74px;object-fit:cover;border-radius:12px;border:2px solid var(--primary-color,#ff9f0a);cursor:zoom-in;background:#fff;flex-shrink:0;}
+    .proof-thumb{width:74px;height:74px;object-fit:cover;border-radius:12px;border:2px solid var(--primary-color,#7C6BB0);cursor:zoom-in;background:#fff;flex-shrink:0;}
     .pay-actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
-    .abtn{border:none;border-radius:12px;padding:10px 16px;font-weight:800;cursor:pointer;background:var(--primary-color,#ff9f0a);color:#fff;font-size:14px;display:inline-flex;align-items:center;gap:6px;}
+    .abtn{border:none;border-radius:12px;padding:10px 16px;font-weight:800;cursor:pointer;background:var(--primary-color,#7C6BB0);color:#fff;font-size:14px;display:inline-flex;align-items:center;gap:6px;}
     .abtn.gray{background:#8e8e93;}
     .abtn.green{background:#34c759;}
     .abtn.red{background:#ff3b30;}
@@ -43,7 +43,7 @@
     .albl{font-size:12px;font-weight:700;color:var(--secondary-text,#666);margin:14px 0 6px;display:block;}
     .filter-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
     .fchip{padding:8px 14px;border-radius:999px;font-weight:800;font-size:13px;cursor:pointer;background:var(--input-bg,rgba(0,0,0,.05));color:var(--secondary-text,#666);}
-    .fchip.active{background:var(--primary-color,#ff9f0a);color:#fff;}
+    .fchip.active{background:var(--primary-color,#7C6BB0);color:#fff;}
     .search-box{flex:1;min-width:180px;}
     .u-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 14px;border-radius:14px;}
     .u-main{flex:1;min-width:200px;}
@@ -65,14 +65,14 @@
 <body>
 
 <div id="adm-loading" class="a-center">
-    <i class="fa-solid fa-piggy-bank" style="font-size:46px;color:var(--primary-color,#ff9f0a);"></i>
+    <i class="fa-solid fa-piggy-bank" style="font-size:46px;color:var(--primary-color,#7C6BB0);"></i>
     <b>Loading Admin…</b>
 </div>
 
 <div id="adm-login" class="a-center" style="display:none;width:100%;">
     <div style="width:100%;max-width:420px;">
         <div class="glass-panel pay-card" style="text-align:center;padding:30px 24px;">
-            <i class="fa-solid fa-user-shield" style="font-size:44px;color:var(--primary-color,#ff9f0a);"></i>
+            <i class="fa-solid fa-user-shield" style="font-size:44px;color:var(--primary-color,#7C6BB0);"></i>
             <h3 style="margin:12px 0 4px;color:var(--text-color,#111);">MTW SUBUU · Super Admin</h3>
             <p style="font-size:12px;color:var(--secondary-text,#777);margin:0 0 6px;">Admin access only</p>
             <label class="albl" style="text-align:left;">Email</label>
@@ -113,7 +113,7 @@
 <div id="adm-panel" style="display:none;">
     <div class="admin-wrap">
         <div class="a-topbar glass-panel">
-            <h2><i class="fa-solid fa-user-shield" style="color:var(--primary-color,#ff9f0a);margin-right:8px;"></i>MTW SUBUU Admin</h2>
+            <h2><i class="fa-solid fa-user-shield" style="color:var(--primary-color,#7C6BB0);margin-right:8px;"></i>MTW SUBUU Admin</h2>
             <div style="display:flex;gap:8px;">
                 <button id="adm-refresh" class="abtn small gray"><i class="fa-solid fa-rotate"></i></button>
                 <button id="adm-logout" class="abtn small red"><i class="fa-solid fa-right-from-bracket"></i></button>

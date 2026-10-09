@@ -6,7 +6,7 @@
     <title>MTW SUBUU Pro Max</title>
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#ff9f0a" id="meta-theme-color">
+    <meta name="theme-color" content="#7C6BB0" id="meta-theme-color">
     
     <link rel="icon" type="image/png" href="https://img.icons8.com/fluent/512/piggy-bank.png">
     <link rel="apple-touch-icon" href="https://img.icons8.com/fluent/512/piggy-bank.png">
@@ -142,6 +142,7 @@
                 </div>
 
                 <div id="monthly-report-content">
+                    <div id="insights-container" style="margin-bottom: 15px;"></div>
                     <div class="accordion-section glass-panel">
                         <div class="accordion-header" onclick="toggleAccordion('acc-bal-content', this)">
                             <span style="font-weight: bold; font-size: 14px; color: var(--text-color);" id="lbl-acc-bals">Account Balances</span>
@@ -169,6 +170,29 @@
                             <canvas id="expensePieChart"></canvas>
                         </div>
                         <div id="chart-custom-legend" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 15px;"></div>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; margin-bottom: 15px;">
+                        <button onclick="exportMonthCSV()" class="glass-panel" style="border: none; cursor: pointer; border-radius: 100px; padding: 10px 18px; font-size: 13px; font-weight: 800; color: var(--text-color); box-shadow: none;">
+                            <i class="fa-solid fa-file-csv" style="color: var(--primary-color); margin-right: 6px;"></i><span id="lbl-export-csv">Export this month (CSV)</span>
+                        </button>
+                    </div>
+                    <div class="accordion-section glass-panel" style="margin-bottom: 15px;">
+                        <div class="accordion-header" onclick="toggleAccordion('io-bar-content', this)">
+                            <span style="font-weight: bold; font-size: 14px; color: var(--text-color);">📊 <span id="lbl-io-chart">Income vs Expense · 6 months</span></span>
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </div>
+                        <div id="io-bar-content" class="accordion-content" style="display: none;">
+                            <div class="chart-container" style="height: 260px;"><canvas id="ioBarChart"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="accordion-section glass-panel" style="margin-bottom: 15px;">
+                        <div class="accordion-header" onclick="toggleAccordion('cat-trend-content', this)">
+                            <span style="font-weight: bold; font-size: 14px; color: var(--text-color);">📈 <span id="lbl-cat-trend">Category Trends · 6 months</span></span>
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </div>
+                        <div id="cat-trend-content" class="accordion-content" style="display: none;">
+                            <div class="chart-container" style="height: 260px;"><canvas id="catTrendChart"></canvas></div>
+                        </div>
                     </div>
                     <div class="input-group glass-panel" style="margin-bottom: 15px; border-radius: 14px; padding: 12px 15px;">
                         <i class="fa-solid fa-magnifying-glass input-icon" style="color: var(--primary-color);"></i>
@@ -372,7 +396,7 @@
     
     <div id="subscription-modal" class="modal-overlay">
         <div class="modal-box no-padding glass-panel" style="max-height: 92vh; overflow-y: auto;">
-            <div class="premium-header" style="background: linear-gradient(135deg, #ffcc00, #ff9500); color: white; padding: 35px 20px; text-align: center;">
+            <div class="premium-header" style="background: linear-gradient(135deg, #B8A9E8, #7C6BB0); color: white; padding: 35px 20px; text-align: center;">
                 <i class="fa-solid fa-crown" style="font-size: 45px; margin-bottom: 15px;"></i>
                 <h3>MTW SUBUU PRO</h3>
             </div>
@@ -391,7 +415,7 @@
             <div id="payment-form" style="display:none; padding: 20px;">
                 <button onclick="backToPlans()" class="btn-close" style="background:var(--input-bg); color:var(--text-color); margin-bottom:15px;"><i class="fa-solid fa-arrow-left"></i> <span id="lbl-back-plans">Plans</span></button>
 
-                <div class="glass-panel" style="padding:14px; border-radius:14px; margin-bottom:15px; text-align:center; background:rgba(255,159,10,0.08);">
+                <div class="glass-panel" style="padding:14px; border-radius:14px; margin-bottom:15px; text-align:center; background:rgba(124,107,176,0.08);">
                     <p id="lbl-your-plan" style="font-size:11px; color:var(--secondary-text); font-weight:800; letter-spacing:1px; margin:0;">SELECTED PLAN</p>
                     <p id="selected-plan-label" style="font-size:18px; font-weight:800; color:var(--primary-color); margin:6px 0 0 0;">—</p>
                 </div>
@@ -425,7 +449,7 @@
 <button onclick="updateLiveRates()" class="btn-close" style="background:var(--input-bg); color:var(--text-color); margin-bottom: 15px;"><i class="fa-solid fa-cloud-arrow-down" style="margin-right:6px; color:var(--primary-color);"></i> <span id="lbl-live-rates">Update Live Rates</span></button>
 <div id="currency-manager-list" style="max-height: 200px; overflow-y: auto;"></div><button onclick="closeCurrenciesManager()" class="btn-close mt-10">Close</button></div></div>
     <div id="recurring-manager-modal" class="modal-overlay"><div class="modal-box glass-panel"><h3 id="lbl-mdl-rec">Manage Recurring</h3><div class="input-group glass-panel" style="margin-top: 15px;"><input type="text" id="rec-name" placeholder="Subscription/Bill Name"></div><div class="input-group glass-panel"><input type="number" id="rec-amount" placeholder="Amount (MMK)"></div><button id="save-rec-btn" onclick="addRecurring()" style="margin-bottom: 10px;">Add</button><div id="recurring-manager-list" style="max-height: 200px; overflow-y: auto;"></div><button onclick="closeRecurringManager()" class="btn-close mt-10">Close</button></div></div>
-    <div id="debts-manager-modal" class="modal-overlay"><div class="modal-box glass-panel"><h3 id="lbl-mdl-debt">Manage Debts</h3><div class="input-group glass-panel" style="margin-top: 15px;"><input type="text" id="debt-name" placeholder="Debt/Person Name"></div><div class="input-group glass-panel"><input type="number" id="debt-amount" placeholder="Amount (MMK)"></div><button onclick="addDebt()" style="margin-bottom: 15px;">Add Debt</button><div id="debts-manager-list" style="max-height: 200px; overflow-y: auto;"></div><button onclick="closeDebtsManager()" class="btn-close mt-10">Close</button></div></div>
+    <div id="debts-manager-modal" class="modal-overlay"><div class="modal-box glass-panel"><h3 id="lbl-mdl-debt">Manage Debts</h3><div class="type-toggle-container glass-panel" style="margin-top: 15px;"><div id="debt-type-lend" class="type-btn active" onclick="setDebtFormType('lend')"><span id="lbl-debt-type-lend">Lent Out</span></div><div id="debt-type-borrow" class="type-btn" onclick="setDebtFormType('borrow')"><span id="lbl-debt-type-borrow">Borrowed</span></div></div><div class="input-group glass-panel"><input type="text" id="debt-name" placeholder="Person Name"></div><div class="input-group glass-panel"><input type="number" id="debt-amount" placeholder="Total Amount (MMK)"></div><div class="input-group glass-panel"><input type="number" id="debt-paid" placeholder="Paid So Far (MMK)"></div><div class="input-group glass-panel"><input type="date" id="debt-due" style="width:100%; border:none; outline:none; background:transparent; color:var(--text-color); font-size:15px; font-weight:600;"></div><div class="input-group glass-panel"><input type="text" id="debt-notes" placeholder="Notes (optional)"></div><button onclick="addDebt()" style="margin-bottom: 15px;">Add Debt</button><div id="debt-summary" style="margin-bottom: 10px;"></div><div id="debts-manager-list" style="max-height: 260px; overflow-y: auto;"></div><button onclick="closeDebtsManager()" class="btn-close mt-10">Close</button></div></div>
     
     <div id="family-sync-modal" class="modal-overlay">
         <div class="modal-box glass-panel">
@@ -457,7 +481,7 @@
         <div class="modal-box text-center glass-panel">
             <h3 id="lbl-choose-color">Choose Accent Color</h3>
             <div style="display:flex; justify-content:center; gap:10px; flex-wrap:nowrap; overflow-x:auto; margin:25px 0; padding-bottom:10px; -webkit-overflow-scrolling: touch;" id="color-options-container">
-                <div class="color-swatch" style="background:#ff9f0a; width:36px; height:36px; flex-shrink:0;" onclick="setAppThemeColor('#ff9f0a')"></div>
+                <div class="color-swatch" style="background:#7C6BB0; width:36px; height:36px; flex-shrink:0;" onclick="setAppThemeColor('#7C6BB0')"></div>
                 <div class="color-swatch" style="background:#007aff; width:36px; height:36px; flex-shrink:0;" onclick="setAppThemeColor('#007aff')"></div>
                 <div class="color-swatch" style="background:#34c759; width:36px; height:36px; flex-shrink:0;" onclick="setAppThemeColor('#34c759')"></div>
                 <div class="color-swatch" style="background:#af52de; width:36px; height:36px; flex-shrink:0;" onclick="setAppThemeColor('#af52de')"></div>
