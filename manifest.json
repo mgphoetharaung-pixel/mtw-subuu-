@@ -4,8 +4,8 @@
   "description": "A professional and smart expense tracker designed to manage your daily finances seamlessly.",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#27ae60",
+  "background_color": "#F4F1FB",
+  "theme_color": "#7C6BB0",
   "icons": [
     {
       "src": "https://img.icons8.com/fluent/512/piggy-bank.png",
