@@ -97,12 +97,12 @@ const geminiPost = async (key, model, body) => {
     return text;
 };
 
-window.callGemini = async (userParts, systemText, maxTokens = 1500) => {
+window.callGemini = async (userParts, systemText, maxTokens = 1500, contentsOverride = null) => {
     const key = window.getGeminiKey();
     if (!key) throw new Error('No Gemini key');
     const base = {
         system_instruction: { parts: [{ text: systemText }] },
-        contents: [{ role: 'user', parts: userParts }]
+        contents: contentsOverride || [{ role: 'user', parts: userParts }]
     };
     const genConfigs = [
         { temperature: 0.6, maxOutputTokens: maxTokens, thinkingConfig: { thinkingLevel: 'low' } },
@@ -597,6 +597,123 @@ window.handleAIAssistantTap = () => {
     window.openAIChat();
 };
 
+// ---- Proactive insights (pure local, offline-safe) ----
+// Surfaces the 1-2 most urgent money observations when the chat opens:
+// over/near-limit budgets, debts due soon, unusual daily spending,
+// unrecorded recurring bills, and goal milestones. No Gemini needed.
+const computeProactiveInsights = () => {
+    const mm = isMM();
+    const insights = [];
+    const key = monthKey();
+    const todayStr = window.getLocalToday ? window.getLocalToday() : localDateStr(new Date());
+
+    // 1. Budgets at/over 80% spent
+    try {
+        const spentByCat = spentByCatThisMonth();
+        (window.globalBudgets || []).forEach((b) => {
+            if (!(b.amount > 0)) return;
+            const spent = spentByCat[b.category] || 0;
+            const pct = Math.round((spent / b.amount) * 100);
+            if (pct >= 100) insights.push({
+                priority: 10, emoji: '🔴',
+                text: mm ? `"${b.category}" ဘတ်ဂျက် ကျော်နေပြီ!` : `"${b.category}" budget exceeded!`,
+                label: mm ? `🔴 ${b.category} ဘတ်ဂျက်` : `🔴 ${b.category} budget`,
+                query: mm ? 'ဘတ်ဂျက် ဘယ်လောက်သုံးပြီးလဲ' : 'budget status'
+            });
+            else if (pct >= 80) insights.push({
+                priority: 40, emoji: '🟠',
+                text: mm ? `"${b.category}" ဘတ်ဂျက် ${pct}% သုံးပြီးပြီ` : `"${b.category}" budget at ${pct}%`,
+                label: mm ? `🟠 ${b.category} ဘတ်ဂျက်` : `🟠 ${b.category} budget`,
+                query: mm ? 'ဘတ်ဂျက် ဘယ်လောက်သုံးပြီးလဲ' : 'budget status'
+            });
+        });
+    } catch (e) {}
+
+    // 2. Debts due within 7 days. Debts are {name, amount} today — a missing
+    //    or invalid dueDate is skipped gracefully, never crashes.
+    try {
+        const now = new Date(todayStr + 'T00:00:00'); now.setHours(0, 0, 0, 0);
+        (window.globalDebts || []).forEach((d) => {
+            if (!d.dueDate) return;
+            const due = new Date(String(d.dueDate));
+            if (isNaN(due)) return;
+            due.setHours(0, 0, 0, 0);
+            const days = Math.round((due - now) / 86400000);
+            if (days < 0 || days > 7) return;
+            insights.push({
+                priority: 20, emoji: '🤝',
+                text: mm
+                    ? `"${d.name}" အကြွေး ${(Number(d.amount) || 0).toLocaleString()} Ks ${days === 0 ? 'ဒီနေ့' : `${days} ရက်အတွင်း`} ပြန်ဆပ်ရမယ်`
+                    : `"${d.name}" debt of ${(Number(d.amount) || 0).toLocaleString()} Ks due ${days === 0 ? 'today' : `in ${days} day${days === 1 ? '' : 's'}`}`,
+                label: mm ? `🤝 ${d.name} အကြွေး` : `🤝 ${d.name} debt`,
+                query: mm ? 'အကြွေးစာရင်း' : 'my debts'
+            });
+        });
+    } catch (e) {}
+
+    // 3. Today's spending above 1.5x the 30-day daily average
+    try {
+        const todaySpent = spentOnLocalDate(todayStr);
+        let sum30 = 0;
+        for (let i = 1; i <= 30; i++) {
+            const d = new Date(); d.setDate(d.getDate() - i);
+            sum30 += spentOnLocalDate(localDateStr(d));
+        }
+        const avg = sum30 / 30;
+        if (todaySpent > 0 && avg > 0 && todaySpent > 1.5 * avg) insights.push({
+            priority: 30, emoji: '📈',
+            text: mm
+                ? `ဒီနေ့ ${todaySpent.toLocaleString()} Ks သုံးထားတယ် — ပုံမှန် (${Math.round(avg).toLocaleString()}/ရက်) ထက် များနေတယ်`
+                : `You've spent ${todaySpent.toLocaleString()} Ks today — above your usual ${Math.round(avg).toLocaleString()}/day`,
+            label: mm ? '📈 ဒီနေ့ သုံးငွေ' : "📈 Today's spending",
+            query: mm ? 'ဒီလ ကုန်ကျစရိတ် ဘယ်လောက်ရှိလဲ' : 'my spending this month'
+        });
+    } catch (e) {}
+
+    // 4. Recurring bills: treated as monthly — nudge during the first 3 days
+    //    of the month if the bill hasn't been recorded yet.
+    try {
+        const dayNum = Number(String(todayStr).substring(8, 10)) || 1;
+        if (dayNum <= 3) {
+            (window.globalRecurring || []).forEach((r) => {
+                const rName = String(r.name || '');
+                const rAmt = Number(r.amount) || 0;
+                const posted = rName && (window.globalTransactions || []).some((t) =>
+                    txInMonth(t, key)
+                    && (Number(String(t.amount).replace(/,/g, '')) || 0) === rAmt
+                    && String(t.note || '').toLowerCase().includes(rName.toLowerCase().slice(0, 12)));
+                if (!posted && rName) insights.push({
+                    priority: 50, emoji: '🔁',
+                    text: mm ? `"${rName}" (${rAmt.toLocaleString()} Ks) ဒီလ မမှတ်ရသေးဘူး` : `"${rName}" (${rAmt.toLocaleString()} Ks) not recorded yet this month`,
+                    label: mm ? `🔁 ${rName}` : `🔁 ${rName}`,
+                    query: mm ? 'ဒီလ ကုန်ကျစရိတ် ဘယ်လောက်ရှိလဲ' : 'my spending this month'
+                });
+            });
+        }
+    } catch (e) {}
+
+    // 5. Goal milestones (50% / 100%)
+    try {
+        (window.globalGoals || []).forEach((g) => {
+            const pct = g.targetAmount > 0 ? Math.round(((g.savedAmount || 0) / g.targetAmount) * 100) : 0;
+            if (pct >= 100) insights.push({
+                priority: 60, emoji: '🎉',
+                text: mm ? `"${g.name}" ရည်မှန်းချက် ပြည့်သွားပြီ!` : `"${g.name}" goal achieved!`,
+                label: mm ? `🎉 ${g.name}` : `🎉 ${g.name}`,
+                query: mm ? 'ရည်မှန်းချက် တိုးတက်မှု' : 'goal progress'
+            });
+            else if (pct >= 50) insights.push({
+                priority: 61, emoji: '🎯',
+                text: mm ? `"${g.name}" ${pct}% ပြည့်ပြီ — တဝက်ကျော်ပြီ!` : `"${g.name}" is ${pct}% there — over halfway!`,
+                label: mm ? `🎯 ${g.name}` : `🎯 ${g.name}`,
+                query: mm ? 'ရည်မှန်းချက် တိုးတက်မှု' : 'goal progress'
+            });
+        });
+    } catch (e) {}
+
+    return insights.sort((a, b) => a.priority - b.priority).slice(0, 2);
+};
+
 window.openAIChat = () => {
     if (!window.isProUser()) return window.showProPaymentDialog();
     const sheet = document.getElementById('ai-chat-sheet');
@@ -605,7 +722,19 @@ window.openAIChat = () => {
     sheet.classList.add('active');
     ov && ov.classList.add('active');
     if (!chatHistory.length) {
-        botSay('မင်္ဂလာပါ 🌷 ကျွန်တော်က စုဗူး AI ပါ 🐷 ကုန်ကျစရိတ်၊ ပေါက်ဈေး၊ ရာသီဥတု — ဘာမဆို လွတ်လပ်စွာ မေးနိုင်ပါတယ်နော် 💛');
+        const mm = isMM();
+        const insights = computeProactiveInsights();
+        const greet = mm ? 'မင်္ဂလာပါ 🌷 ကျွန်တော်က စုဗူး AI ပါ 🐷' : "Hello 🌷 I'm SUBUU AI 🐷";
+        if (insights.length) {
+            const cards = insights.map((ins) =>
+                `<button class="ai-chip glass-panel" style="display:block;width:100%;text-align:left;margin-top:8px;" onclick='sendQuick(${JSON.stringify(ins.label)}, ${JSON.stringify(ins.query)})'>${ins.emoji} ${esc(ins.text)}</button>`
+            ).join('');
+            botSay(`${greet}<br><br>${mm ? '👀 <b>ဒီနေ့ သတိထားရမယ့် အချက်များ:</b>' : '👀 <b>Heads-up for today:</b>'}${cards}<br><small style="opacity:.65">${mm ? 'ကုန်ကျစရိတ်၊ ပေါက်ဈေး၊ ရာသီဥတု — ဘာမဆို လွတ်လပ်စွာ မေးနိုင်ပါတယ်နော် 💛' : 'Ask me anything — spending, rates, weather 💛'}</small>`);
+        } else {
+            botSay(mm
+                ? 'မင်္ဂလာပါ 🌷 ကျွန်တော်က စုဗူး AI ပါ 🐷 ကုန်ကျစရိတ်၊ ပေါက်ဈေး၊ ရာသီဥတု — ဘာမဆို လွတ်လပ်စွာ မေးနိုင်ပါတယ်နော် 💛'
+                : "Hello 🌷 I'm SUBUU AI 🐷 — ask me anything about your spending, exchange rates, or the weather 💛");
+        }
     }
     renderChips();
     setTimeout(() => {
@@ -697,6 +826,29 @@ const totalBalance = () => {
     return bal;
 };
 
+// Shared: this month's expense totals per category (reused by answerBudgets + proactive insights).
+const spentByCatThisMonth = () => {
+    const key = monthKey();
+    const spentByCat = {};
+    (window.globalTransactions || []).filter((t) => t.type === 'Expense' && txInMonth(t, key)).forEach((t) => {
+        spentByCat[t.category] = (spentByCat[t.category] || 0) + (Number(String(t.amount).replace(/,/g, '')) || 0);
+    });
+    return spentByCat;
+};
+
+// Local YYYY-MM-DD for a Date (timestamps are stored as UTC ISO strings).
+const localDateStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const spentOnLocalDate = (dateStr) => {
+    let s = 0;
+    (window.globalTransactions || []).forEach((t) => {
+        const d = new Date(String(t.timestamp || ''));
+        if (isNaN(d) || localDateStr(d) !== dateStr || t.type !== 'Expense') return;
+        s += (Number(String(t.amount).replace(/,/g, '')) || 0);
+    });
+    return s;
+};
+
 const topCategoriesHtml = (byCat, expenseTotal) => {
     const top = Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 3);
     if (!top.length) return '';
@@ -775,19 +927,32 @@ const answerBalance = () => {
         : `💰 <b>Total balance (all accounts)</b><br><span style="font-size:22px;" class="${b >= 0 ? 'text-green' : 'text-red'}"><b>${b.toLocaleString()} Ks</b></span><br><small>Income − Expense across all time (transfers excluded)</small>`);
 };
 
+// Projects month-end spend for a budget category from the current daily pace.
+// Returns { projected, over } when the pace would exceed the budget, else null.
+const projectBurnRate = (spent, budget) => {
+    if (!(budget > 0) || !(spent > 0)) return null;
+    const [y, m] = monthKey().split('-').map(Number);
+    const daysInMonth = new Date(y, m, 0).getDate();
+    const todayStr = window.getLocalToday ? window.getLocalToday() : localDateStr(new Date());
+    const dayNum = Math.max(1, Number(String(todayStr).substring(8, 10)) || 1);
+    const projected = Math.round((spent / dayNum) * daysInMonth);
+    const over = projected - budget;
+    return over > 0 ? { projected, over } : null;
+};
+
 const answerBudgets = () => {
     const mm = replyMM();
     if (!(window.globalBudgets || []).length) return botSay(mm ? '🎯 ဘတ်ဂျက် မသတ်မှတ်ထားပါ။ Setting → Manage Budgets မှ စတင်ပါ။' : '🎯 No budgets set. Start in Settings → Manage Budgets.');
-    const key = monthKey();
-    const spentByCat = {};
-    (window.globalTransactions || []).filter((t) => t.type === 'Expense' && txInMonth(t, key)).forEach((t) => {
-        spentByCat[t.category] = (spentByCat[t.category] || 0) + (Number(String(t.amount).replace(/,/g, '')) || 0);
-    });
+    const spentByCat = spentByCatThisMonth();
     const rows = window.globalBudgets.map((b) => {
         const spent = spentByCat[b.category] || 0;
         const pct = b.amount > 0 ? Math.round(spent / b.amount * 100) : 0;
         const emoji = pct >= 100 ? '🔴' : pct >= 80 ? '🟠' : '🟢';
-        return `<div class="ai-mini-row"><span>${emoji} ${esc(b.category)}</span><div class="ai-mini-bar"><i style="width:${Math.min(pct, 100)}%;background:${pct >= 100 ? '#ff453a' : pct >= 80 ? '#ff9f0a' : '#32d74b'};"></i></div><b>${pct}%</b></div>`;
+        const burn = projectBurnRate(spent, b.amount);
+        const burnHtml = burn
+            ? `<div style="font-size:11px;opacity:.8;margin:2px 0 6px;">📈 ${mm ? `ဒီအတိုင်းဆက်သုံးရင် <b>~${burn.over.toLocaleString()} Ks</b> ကျော်မယ်` : `at this pace you'll exceed by <b>~${burn.over.toLocaleString()} Ks</b>`}</div>`
+            : '';
+        return `<div class="ai-mini-row"><span>${emoji} ${esc(b.category)}</span><div class="ai-mini-bar"><i style="width:${Math.min(pct, 100)}%;background:${pct >= 100 ? '#ff453a' : pct >= 80 ? '#ff9f0a' : '#32d74b'};"></i></div><b>${pct}%</b></div>${burnHtml}`;
     }).join('');
     botSay(`${mm ? '🎯 <b>ဘတ်ဂျက် အခြေအနေ (ဒီလ)</b>' : '🎯 <b>Budget usage (this month)</b>'}<div class="ai-block">${rows}</div>`);
 };
@@ -800,6 +965,34 @@ const answerGoals = () => {
         return `<div class="ai-mini-row"><span>🎯 ${esc(g.name)}</span><div class="ai-mini-bar"><i style="width:${pct}%;background:var(--primary-color);"></i></div><b>${pct}%</b></div>`;
     }).join('');
     botSay(`${mm ? '🐷 <b>ရည်မှန်းချက် တိုးတက်မှု</b>' : '🐷 <b>Goal progress</b>'}<div class="ai-block">${rows}</div>`);
+};
+
+const answerDebts = () => {
+    const mm = replyMM();
+    const debts = window.globalDebts || [];
+    if (!debts.length) return botSay(mm ? '🤝 အကြွေး စာရင်း မရှိပါ — စိတ်အေးရပါတယ်! 🎉' : '🤝 No debts recorded — you are all clear! 🎉');
+    const remOf = (d) => Math.max(0, (Number(d.amount) || 0) - (Number(d.paidAmount) || 0));
+    const open = debts.filter((d) => d.status !== 'settled' && remOf(d) > 0);
+    const total = open.reduce((s, d) => s + remOf(d), 0);
+    const rows = open.map((d) => {
+        const due = d.dueDate ? `<small style="opacity:.7"> · ${mm ? 'ပြန်ဆပ်ရမည့်ရက်' : 'due'} ${esc(String(d.dueDate).substring(0, 10))}</small>` : '';
+        const typeTag = d.type === 'borrow' ? (mm ? ' · ချေးယူထားတယ်' : ' · borrowed') : (mm ? ' · ချေးပေးထားတယ်' : ' · lent out');
+        return `<div class="ai-mini-row"><span>🤝 ${esc(d.name || (mm ? 'အကြွေး' : 'Debt'))}<small style="opacity:.7">${typeTag}</small>${due}</span><div class="ai-mini-bar"></div><b>${remOf(d).toLocaleString()} Ks</b></div>`;
+    }).join('');
+    const settledN = debts.length - open.length;
+    botSay(`${mm ? '🤝 <b>အကြွေး စာရင်း</b>' : '🤝 <b>Debts</b>'}<div class="ai-block">${rows || (mm ? 'အားလုံး ဆပ်ပြီးပါပြီ! 🎉' : 'All settled! 🎉')}</div><br><small>${mm ? 'ကျန်ငွေ စုစုပေါင်း' : 'Total outstanding'}: <b>${total.toLocaleString()} Ks</b>${settledN ? ` · ${settledN} ${mm ? 'ခု ဆပ်ပြီးပြီ' : 'settled'}` : ''}</small>`);
+};
+
+const answerTransfers = () => {
+    const mm = replyMM();
+    const key = monthKey();
+    const trs = (window.globalTransactions || []).filter((t) => t.type === 'Transfer' && txInMonth(t, key));
+    if (!trs.length) return botSay(mm ? '🔄 ဒီလ အကောင့်လွှဲပြောင်းမှု မရှိပါ။' : '🔄 No transfers this month.');
+    const total = trs.reduce((s, t) => s + (Number(String(t.amount).replace(/,/g, '')) || 0), 0);
+    const rows = trs.slice(0, 8).map((t) =>
+        `<div class="ai-mini-row"><span>🔄 ${esc(t.account || '')} → ${esc(t.toAccount || '')}</span><div class="ai-mini-bar"></div><b>${(Number(String(t.amount).replace(/,/g, '')) || 0).toLocaleString()} Ks</b></div>`
+    ).join('');
+    botSay(`${mm ? '🔄 <b>ဒီလ အကောင့်လွှဲပြောင်းမှုများ</b>' : '🔄 <b>Transfers this month</b>'}<div class="ai-block">${rows}</div><br><small>${mm ? 'စုစုပေါင်း' : 'Total'}: <b>${total.toLocaleString()} Ks</b> (${trs.length} ${mm ? 'ကြိမ်' : 'transfers'})</small>`);
 };
 
 const answerTips = () => {
@@ -847,16 +1040,39 @@ const answerHelp = () => {
         : '🐷 <b>Here is what I can do:</b><br><br>💱 "What is the USD rate?"<br>🌦️ "Will it rain tomorrow?"<br>📊 "My spending this month"<br>💰 "What is my balance?"<br>🎯 "Budget status"<br>💡 "Give me saving tips"');
 };
 
+// ---- Conversation memory ----
+// Builds a Gemini `contents` array from recent chat turns so follow-up questions
+// ("and last month?", "food ကော?") get proper context. HTML is stripped via
+// extractSpeakText; Gemini expects roles user/model. Gracefully degrades to a
+// single-turn prompt when there is no history (the caller's currentText is
+// always appended, so the result is never empty).
+const buildChatContents = (currentText, maxTurns = 4) => {
+    const contents = [];
+    chatHistory.slice(-(maxTurns * 2)).forEach((m) => {
+        const text = extractSpeakText(m.html, 500);
+        if (!text) return;
+        contents.push({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text }] });
+    });
+    if (currentText != null) {
+        // The current question was already pushed to chatHistory by handleAISend/sendQuick —
+        // replace that trailing entry with the caller's exact prompt.
+        while (contents.length && contents[contents.length - 1].role === 'user') contents.pop();
+        contents.push({ role: 'user', parts: [{ text: String(currentText) }] });
+    }
+    // Gemini requires the first content to be a user turn; drop leading model turns.
+    while (contents.length && contents[0].role !== 'user') contents.shift();
+    return contents;
+};
+
 const answerTipsSmart = async () => {
     if (!geminiCanUse()) return answerTips();
     const mm = replyMM();
     const t = showTyping();
     try {
-        const text = await window.callGemini(
-            [{ text: mm
-                ? 'ကျွန်ုပ်၏ ဒီလ ငွေသုံးစွဲမှုအခြေအနေအပေါ် အခြေခံပြီး ငွေစုနိုင်ရန် အကြံပြုချက် ၃-၄ ချက် ပေးပါ။'
-                : 'Based on my financial context, give me 3-4 specific, actionable saving tips this month.' }],
-            GEMINI_CHAT_SYSTEM(mm), 1200);
+        const prompt = mm
+            ? 'ကျွန်ုပ်၏ ဒီလ ငွေသုံးစွဲမှုအခြေအနေအပေါ် အခြေခံပြီး ငွေစုနိုင်ရန် အကြံပြုချက် ၃-၄ ချက် ပေးပါ။'
+            : 'Based on my financial context, give me 3-4 specific, actionable saving tips this month.';
+        const text = await window.callGemini([], GEMINI_CHAT_SYSTEM(mm), 1200, buildChatContents(prompt));
         hideTyping(t);
         botSay(`💡 <b>${mm ? 'AI အကြံပြုချက်များ' : 'AI tips for you'}</b><br><br>${geminiFormat(text)}`);
     } catch (e) {
@@ -870,7 +1086,7 @@ const answerSmartFallback = async (question) => {
     const mm = replyMM();
     const t = showTyping();
     try {
-        const text = await window.callGemini([{ text: question }], GEMINI_CHAT_SYSTEM(mm), 1200);
+        const text = await window.callGemini([], GEMINI_CHAT_SYSTEM(mm), 1200, buildChatContents(question));
         hideTyping(t);
         botSay(geminiFormat(text));
     } catch (e) {
@@ -889,14 +1105,17 @@ const answerQuery = (raw) => {
     setTimeout(() => {
         hideTyping(t);
         const has = (...words) => words.some((w) => text.includes(w));
+        const hasWord = (...words) => words.some((w) => new RegExp(`\\b${w}\\b`).test(text));
         if (has('usd', 'dollar', 'exchange', 'rate', 'currency', 'eur', 'sgd', 'baht', 'thb', 'singapore', 'ပေါက်ဈေး', 'နှုန်း', 'ဒေါ်လာ', 'ငွေကြေး', 'လဲလှယ်')) return answerCurrency();
         if (has('weather', 'rain', 'temperature', 'hot', 'cold', 'forecast', 'မိုး', 'ရာသီ', 'ပူ', 'အအေး', 'နွေး')) return answerWeather();
         if (has('budget', 'ဘတ်ဂျက်')) return answerBudgets();
         if (has('goal', 'saving goal', 'ရည်မှန်း')) return answerGoals();
         if (has('balance', 'total', 'remaining money', 'လက်ကျန်', 'စုစုပေါင်း', 'ကျန်ငွေ')) return answerBalance();
+        if (has('transfer', 'လွှဲ')) return answerTransfers();
+        if (hasWord('debt', 'debts', 'loan', 'loans', 'owe', 'owed', 'borrow', 'borrowed') || has('အကြွေး', 'ချေး', 'ကြွေး')) return answerDebts();
         if (has('tip', 'advice', 'suggest', 'help me save', 'အကြံ', 'ညွှန်ကြား', 'စုနိုင်', 'လျှော့ချ')) return answerTipsSmart();
         if (has('month', 'report', 'spend', 'spent', 'expense', 'summary', 'ဒီလ', 'လစဉ်', 'ကုန်', 'သုံး', 'ကျသုံး', 'ကျသင့်', 'အနှစ်ချုပ်', 'စာရင်း')) return answerMonthReport();
-        if (has('hi', 'hello', 'hey', 'မင်္ဂလာ', 'ဟယ်လို', 'ဟေး')) return answerHelp();
+        if (hasWord('hi', 'hello', 'hey') || has('မင်္ဂလာ', 'ဟယ်လို', 'ဟေး')) return answerHelp();
         answerSmartFallback(String(raw || ''));
     }, 450);
 };
